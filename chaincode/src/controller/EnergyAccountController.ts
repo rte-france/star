@@ -241,28 +241,4 @@ export class EnergyAccountController {
         }
         return JSON.stringify(allResults);
     }
-
-    // public static async getAllEnergyAccount(ctx: Context): Promise<string> {
-    //     const allResults = [];
-    //     const query = `{"selector": {"docType": "energyAccount"}}`;
-    //     const identity = await ctx.stub.getMspID();
-    //     if (identity !== OrganizationTypeMsp.RTE && identity !== OrganizationTypeMsp.ENEDIS) {
-    //         throw new Error(`Organisation, ${identity} does not have read access for Energy Account.`);
-    //     }
-
-    //     const iterator = await ctx.stub.getQueryResult(query);
-    //     let result = await iterator.next();
-    //     while (!result.done) {
-    //         const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
-    //         let record;
-    //         try {
-    //             record = JSON.parse(strValue);
-    //         } catch (err) {
-    //             record = strValue;
-    //         }
-    //         allResults.push(record);
-    //         result = await iterator.next();
-    //     }
-    //     return JSON.stringify(allResults);
-    // }
 }
