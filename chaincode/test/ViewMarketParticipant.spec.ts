@@ -85,11 +85,11 @@ describe('Star Tests RESTITUTIONS', () => {
             let star = new Star();
 
             chaincodeStub.MspiID = 'RTEMSP';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"RTE01EIC\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"EolienFRvert28EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"RTE01EIC\",\"systemOperatorMarketParticipantName\": \"RTE\",\"systemOperatorMarketParticipantRoleType\": \"A49\"}');
+            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"EolienFRvert28EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
             chaincodeStub.MspiID = 'ENEDISMSP';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"ENEDIS02EIC\",\"marketParticipantName\": \"ENEDIS\",\"marketParticipantRoleType\": \"A22\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"EolienFRvert29EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A22\"}');
+            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"ENEDIS02EIC\",\"systemOperatorMarketParticipantName\": \"ENEDIS\",\"systemOperatorMarketParticipantRoleType\": \"A22\"}');
+            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"EolienFRvert29EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A22\"}');
 
             let ret = await star.ViewSystemOperaterMarketParticipant(transactionContext);
             ret = JSON.parse(ret);
@@ -100,13 +100,13 @@ describe('Star Tests RESTITUTIONS', () => {
                 producers: [
                   {
                     docType: 'producer',
-                    producerMarketParticipantMrId: 'EolienFRvert28EIC',
+                    producerMarketParticipantMrid: 'EolienFRvert28EIC',
                     producerMarketParticipantName: 'EolienFR vert Cie',
                     producerMarketParticipantRoleType: 'A21'
                   },
                   {
                     docType: 'producer',
-                    producerMarketParticipantMrId: 'EolienFRvert29EIC',
+                    producerMarketParticipantMrid: 'EolienFRvert29EIC',
                     producerMarketParticipantName: 'EolienFR vert Cie',
                     producerMarketParticipantRoleType: 'A22'
                   }
@@ -114,15 +114,15 @@ describe('Star Tests RESTITUTIONS', () => {
                 systemOperators: [
                   {
                     docType: 'systemOperator',
-                    marketParticipantName: 'RTE',
-                    marketParticipantRoleType: 'A49',
-                    systemOperatorMarketParticipantMrId: 'RTE01EIC'
+                    systemOperatorMarketParticipantName: 'RTE',
+                    systemOperatorMarketParticipantRoleType: 'A49',
+                    systemOperatorMarketParticipantMrid: 'RTE01EIC'
                   },
                   {
                     docType: 'systemOperator',
-                    marketParticipantName: 'ENEDIS',
-                    marketParticipantRoleType: 'A22',
-                    systemOperatorMarketParticipantMrId: 'ENEDIS02EIC'
+                    systemOperatorMarketParticipantName: 'ENEDIS',
+                    systemOperatorMarketParticipantRoleType: 'A22',
+                    systemOperatorMarketParticipantMrid: 'ENEDIS02EIC'
                   }
                 ]
               };
@@ -136,11 +136,11 @@ describe('Star Tests RESTITUTIONS', () => {
             let star = new Star();
 
             chaincodeStub.MspiID = 'RTEMSP';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"RTE01EIC\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"EolienFRvert28EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"RTE01EIC\",\"systemOperatorMarketParticipantName\": \"RTE\",\"systemOperatorMarketParticipantRoleType\": \"A49\"}');
+            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"EolienFRvert28EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
             chaincodeStub.MspiID = 'ENEDISMSP';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"ENEDIS02EIC\",\"marketParticipantName\": \"ENEDIS\",\"marketParticipantRoleType\": \"A22\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"EolienFRvert29EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A22\"}');
+            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"ENEDIS02EIC\",\"systemOperatorMarketParticipantName\": \"ENEDIS\",\"systemOperatorMarketParticipantRoleType\": \"A22\"}');
+            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"EolienFRvert29EIC\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A22\"}');
 
             let ret = await star.ViewProducerMarketParticipant(transactionContext, 'EolienFRvert28EIC');
             ret = JSON.parse(ret);
@@ -150,22 +150,22 @@ describe('Star Tests RESTITUTIONS', () => {
             const expected = {
                 producers: {
                     docType: 'producer',
-                    producerMarketParticipantMrId: 'EolienFRvert28EIC',
+                    producerMarketParticipantMrid: 'EolienFRvert28EIC',
                     producerMarketParticipantName: 'EolienFR vert Cie',
                     producerMarketParticipantRoleType: 'A21'
                 },
                 systemOperators: [
                 {
                     docType: 'systemOperator',
-                    marketParticipantName: 'RTE',
-                    marketParticipantRoleType: 'A49',
-                    systemOperatorMarketParticipantMrId: 'RTE01EIC'
+                    systemOperatorMarketParticipantName: 'RTE',
+                    systemOperatorMarketParticipantRoleType: 'A49',
+                    systemOperatorMarketParticipantMrid: 'RTE01EIC'
                 },
                 {
                     docType: 'systemOperator',
-                    marketParticipantName: 'ENEDIS',
-                    marketParticipantRoleType: 'A22',
-                    systemOperatorMarketParticipantMrId: 'ENEDIS02EIC'
+                    systemOperatorMarketParticipantName: 'ENEDIS',
+                    systemOperatorMarketParticipantRoleType: 'A22',
+                    systemOperatorMarketParticipantMrid: 'ENEDIS02EIC'
                 }
                 ]
             };
