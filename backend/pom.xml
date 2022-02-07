@@ -31,6 +31,8 @@
         <jacoco.version>0.8.7</jacoco.version>
         <sonarqube.version>3.8.0.2131</sonarqube.version>
         <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
+        <org.pitest.version>1.7.3</org.pitest.version>
+        <org.pitestJunit5Plugin.version>0.15</org.pitestJunit5Plugin.version>
     </properties>
     <dependencies>
         <dependency>
@@ -114,7 +116,33 @@
                 <version>${sonarqube.version}</version>
             </plugin>
 
-
+            <!-- Mutation Testing -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>${org.pitest.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>${org.pitestJunit5Plugin.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <outputFormats>
+                        <outputFormat>html</outputFormat> <!-- Sonar would require xml format report -->
+                    </outputFormats>
+                    <timestampedReports>false</timestampedReports>
+                    <targetClasses>
+                        <param>com.star*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>com.star*</param>
+                    </targetTests>
+                    <historyInputFile>src/main/resources/pitHash</historyInputFile>
+                    <historyOutputFile>src/main/resources/pitHash</historyOutputFile>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
