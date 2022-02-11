@@ -6,6 +6,14 @@ docker run --rm -u $(id -u):$(id -g) -v $PWD/hlf/staging:/hlf/staging hyperledge
 docker run --rm -u $(id -u):$(id -g) -v $PWD/hlf/staging:/hlf/staging hyperledger/fabric-tools:2.3 env FABRIC_CFG_PATH=/hlf/staging configtxgen -profile TwoOrgsOrdererGenesis -channelID system-channel -outputBlock /hlf/staging/generated/genesis.block
 docker run --rm -u $(id -u):$(id -g) -v $PWD/hlf/staging:/hlf/staging hyperledger/fabric-tools:2.3 env FABRIC_CFG_PATH=/hlf/staging configtxgen -profile TwoOrgsChannel -outputCreateChannelTx /hlf/staging/generated/star.tx -channelID star
 
+./hlf/staging/ccp-generate.sh enedis
+./hlf/staging/ccp-generate.sh producer
+./hlf/staging/ccp-generate.sh rte
+
+./hlf/staging/user-generate.sh enedis
+./hlf/staging/user-generate.sh producer
+./hlf/staging/user-generate.sh rte
+
 function generate_secrets {
     # orderer
     echo ---
@@ -90,6 +98,11 @@ function generate_secrets {
     echo ---
     kubectl create secret --dry-run=client -o yaml -n enedis-staging generic hlf--peer2-adminkey --from-file=cert.pem=./hlf/staging/generated/crypto-config/peerOrganizations/enedis/users/Admin@enedis/msp/keystore/priv_sk
 
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n enedis-staging generic star-peer-connection --from-file=connection.yaml=./hlf/staging/generated/crypto-config/peerOrganizations/enedis/connection-enedis.yaml
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n enedis-staging generic star-user-id --from-file=User1.id=./hlf/staging/generated/crypto-config/peerOrganizations/enedis/User1.id
+
     # rte
     echo ---
     kubectl create  --dry-run=client -o yaml namespace rte-staging
@@ -136,6 +149,11 @@ function generate_secrets {
     echo ---
     kubectl create secret --dry-run=client -o yaml -n rte-staging generic hlf--peer2-adminkey --from-file=cert.pem=./hlf/staging/generated/crypto-config/peerOrganizations/rte/users/Admin@rte/msp/keystore/priv_sk
 
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n rte-staging generic star-peer-connection --from-file=connection.yaml=./hlf/staging/generated/crypto-config/peerOrganizations/rte/connection-rte.yaml
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n rte-staging generic star-user-id --from-file=User1.id=./hlf/staging/generated/crypto-config/peerOrganizations/rte/User1.id
+
     # producer
     echo ---
     kubectl create  --dry-run=client -o yaml namespace producer-staging
@@ -179,6 +197,11 @@ function generate_secrets {
     kubectl create secret --dry-run=client -o yaml -n producer-staging generic hlf--peer2-admincert --from-file=cert.pem=./hlf/staging/generated/crypto-config/peerOrganizations/producer/users/Admin@producer/msp/signcerts/Admin@producer-cert.pem
     echo ---
     kubectl create secret --dry-run=client -o yaml -n producer-staging generic hlf--peer2-adminkey --from-file=cert.pem=./hlf/staging/generated/crypto-config/peerOrganizations/producer/users/Admin@producer/msp/keystore/priv_sk
+
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n producer-staging generic star-peer-connection --from-file=connection.yaml=./hlf/staging/generated/crypto-config/peerOrganizations/producer/connection-producer.yaml
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n producer-staging generic star-user-id --from-file=User1.id=./hlf/staging/generated/crypto-config/peerOrganizations/producer/User1.id
 }
 
 generate_secrets > secrets-staging.yaml

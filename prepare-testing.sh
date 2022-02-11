@@ -6,6 +6,14 @@ docker run --rm -u $(id -u):$(id -g) -v $PWD/hlf/testing:/hlf/testing hyperledge
 docker run --rm -u $(id -u):$(id -g) -v $PWD/hlf/testing:/hlf/testing hyperledger/fabric-tools:2.3 env FABRIC_CFG_PATH=/hlf/testing configtxgen -profile TwoOrgsOrdererGenesis -channelID system-channel -outputBlock /hlf/testing/generated/genesis.block
 docker run --rm -u $(id -u):$(id -g) -v $PWD/hlf/testing:/hlf/testing hyperledger/fabric-tools:2.3 env FABRIC_CFG_PATH=/hlf/testing configtxgen -profile TwoOrgsChannel -outputCreateChannelTx /hlf/testing/generated/star.tx -channelID star
 
+./hlf/testing/ccp-generate.sh enedis
+./hlf/testing/ccp-generate.sh producer
+./hlf/testing/ccp-generate.sh rte
+
+./hlf/testing/user-generate.sh enedis
+./hlf/testing/user-generate.sh producer
+./hlf/testing/user-generate.sh rte
+
 function generate_secrets {
     # orderer
     echo ---
@@ -90,6 +98,11 @@ function generate_secrets {
     echo ---
     kubectl create secret --dry-run=client -o yaml -n enedis-testing generic hlf--peer2-adminkey --from-file=cert.pem=./hlf/testing/generated/crypto-config/peerOrganizations/enedis/users/Admin@enedis/msp/keystore/priv_sk
 
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n enedis-testing generic star-peer-connection --from-file=connection.yaml=./hlf/testing/generated/crypto-config/peerOrganizations/enedis/connection-enedis.yaml
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n enedis-testing generic star-user-id --from-file=User1.id=./hlf/testing/generated/crypto-config/peerOrganizations/enedis/User1.id
+
     # rte
     echo ---
     kubectl create  --dry-run=client -o yaml namespace rte-testing
@@ -136,6 +149,11 @@ function generate_secrets {
     echo ---
     kubectl create secret --dry-run=client -o yaml -n rte-testing generic hlf--peer2-adminkey --from-file=cert.pem=./hlf/testing/generated/crypto-config/peerOrganizations/rte/users/Admin@rte/msp/keystore/priv_sk
 
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n rte-testing generic star-peer-connection --from-file=connection.yaml=./hlf/testing/generated/crypto-config/peerOrganizations/rte/connection-rte.yaml
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n rte-testing generic star-user-id --from-file=User1.id=./hlf/testing/generated/crypto-config/peerOrganizations/rte/User1.id
+
     # producer
     echo ---
     kubectl create  --dry-run=client -o yaml namespace producer-testing
@@ -179,6 +197,11 @@ function generate_secrets {
     kubectl create secret --dry-run=client -o yaml -n producer-testing generic hlf--peer2-admincert --from-file=cert.pem=./hlf/testing/generated/crypto-config/peerOrganizations/producer/users/Admin@producer/msp/signcerts/Admin@producer-cert.pem
     echo ---
     kubectl create secret --dry-run=client -o yaml -n producer-testing generic hlf--peer2-adminkey --from-file=cert.pem=./hlf/testing/generated/crypto-config/peerOrganizations/producer/users/Admin@producer/msp/keystore/priv_sk
+
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n producer-testing generic star-peer-connection --from-file=connection.yaml=./hlf/testing/generated/crypto-config/peerOrganizations/producer/connection-producer.yaml
+    echo ---
+    kubectl create secret --dry-run=client -o yaml -n producer-testing generic star-user-id --from-file=User1.id=./hlf/testing/generated/crypto-config/peerOrganizations/producer/User1.id
 }
 
 generate_secrets > secrets-testing.yaml
