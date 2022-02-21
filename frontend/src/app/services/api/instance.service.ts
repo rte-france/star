@@ -18,9 +18,6 @@ export class InstanceService {
   ) {}
 
   getTypeInstance(): Observable<Instance> {
-    // TODO : MOCK
-    return of(Instance.TSO);
-
     // On utilise un cache en Production
     if (environment.production) {
       return this.cacheService.getValueInCacheOrLoadIt<Instance>(
@@ -29,6 +26,7 @@ export class InstanceService {
         this.httpClient.get<Instance>(`${environment.serverUrl}/instance`)
       );
     } else {
+      // Si on est pas en prod => on va chercher la valeur directement aupès du back
       return this.httpClient.get<Instance>(`${environment.serverUrl}/instance`);
     }
   }
