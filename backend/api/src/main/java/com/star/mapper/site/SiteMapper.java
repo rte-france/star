@@ -29,7 +29,7 @@ public interface SiteMapper {
 
     @Named("mapTypeSiteForSite")
     default TypeSiteEnum mapTypeSiteForSite(Site site) {
-        return TypeSiteEnum.HTA;
+        return Site.isSiteHTA(site.getMeteringPointMrid()) ? TypeSiteEnum.HTA : TypeSiteEnum.HTB;
     }
 
     @Named("mapIecCodeForSite")
