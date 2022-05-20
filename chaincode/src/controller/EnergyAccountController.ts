@@ -11,7 +11,39 @@ export class EnergyAccountController {
         ctx: Context,
         inputStr: string) {
         console.info('============= START : Create EnergyAccount ===========');
+        const energyAccountInput = await EnergyAccountController.checkEnergyAccount(ctx, inputStr);
+        await ctx.stub.putState(
+            energyAccountInput.energyAccountMarketDocumentMrid,
+            Buffer.from(JSON.stringify(energyAccountInput)),
+        );
+        console.info(
+            '============= END   : Create %s EnergyAccount ===========',
+            energyAccountInput.energyAccountMarketDocumentMrid,
+        );
+    }
 
+
+    public static async updateEnergyAccount(
+        ctx: Context,
+        inputStr: string) {
+        console.info('============= START : Update EnergyAccount ===========');
+        const energyAccountInput = await EnergyAccountController.checkEnergyAccount(ctx, inputStr);
+        const energyAccountAsBytes = await ctx.stub.getState(energyAccountInput.energyAccountMarketDocumentMrid);
+        if (!energyAccountAsBytes || energyAccountAsBytes.length === 0) {
+            throw new Error(`${energyAccountInput.energyAccountMarketDocumentMrid} does not exist. Can not be updated.`);
+        }
+        await ctx.stub.putState(
+            energyAccountInput.energyAccountMarketDocumentMrid,
+            Buffer.from(JSON.stringify(energyAccountInput)),
+        );
+        console.info(
+            '============= END   : Update %s EnergyAccount ===========',
+            energyAccountInput.energyAccountMarketDocumentMrid,
+        );
+    }
+
+    private static async checkEnergyAccount(ctx: Context,
+                                            inputStr: string): Promise<any>{
         const identity = await ctx.stub.getMspID();
         if (identity !== OrganizationTypeMsp.RTE && identity !== OrganizationTypeMsp.ENEDIS) {
             throw new Error(`Organisation, ${identity} does not have write access for Energy Account.`);
@@ -44,7 +76,7 @@ export class EnergyAccountController {
         const systemOperatorAsBytes = await ctx.stub.getState(energyAccountInput.senderMarketParticipantMrid);
         if (!systemOperatorAsBytes || systemOperatorAsBytes.length === 0) {
             throw new Error(
-                `System Operator : ${energyAccountInput.senderMarketParticipantMrid} does not exist for Energy Account ${energyAccountInput.energyAccountMarketDocumentMrid} creation.`,
+                `System Operator : ${energyAccountInput.senderMarketParticipantMrid} does not exist for Energy Account ${energyAccountInput.energyAccountMarketDocumentMrid}.`,
             );
         }
 
@@ -56,29 +88,21 @@ export class EnergyAccountController {
         }
         if (!identity.toLowerCase().includes(systemOperatorObj.systemOperatorMarketParticipantName.toLowerCase())) {
             throw new Error(
-                `Energy Account, sender: ${identity} does not have write access for ${energyAccountInput.energyAccountMarketDocumentMrid} creation. (Wrong SystemOperator)`,
+                `Energy Account, sender: ${identity} does not have write access for ${energyAccountInput.energyAccountMarketDocumentMrid}. (Wrong SystemOperator)`,
             );
         }
 
         if (siteObj.systemOperatorMarketParticipantMrid !== energyAccountInput.senderMarketParticipantMrid) {
-            throw new Error(`Energy Account, sender: ${energyAccountInput.senderMarketParticipantMrid} does is not the same as site.systemOperator: ${siteObj.systemOperatorMarketParticipantMrid} in EnergyAccount creation.`);
+            throw new Error(`Energy Account, sender: ${energyAccountInput.senderMarketParticipantMrid} does is not the same as site.systemOperator: ${siteObj.systemOperatorMarketParticipantMrid} in EnergyAccount.`);
         }
 
         if (identity === OrganizationTypeMsp.RTE && !energyAccountInput.marketEvaluationPointMrid) {
-            throw new Error(`Energy Account, missing marketEvaluationPointMrid optionnal for HTA but required for HTB in EnergyAccount creation.`);
+            throw new Error(`Energy Account, missing marketEvaluationPointMrid optionnal for HTA but required for HTB in EnergyAccount.`);
         } else if (identity === OrganizationTypeMsp.ENEDIS && energyAccountInput.marketEvaluationPointMrid) {
-            throw new Error(`Energy Account, presence of marketEvaluationPointMrid optionnal for HTA but required for HTB in EnergyAccount creation.`);
+            throw new Error(`Energy Account, presence of marketEvaluationPointMrid optionnal for HTA but required for HTB in EnergyAccount.`);
         }
         energyAccountInput.docType = 'energyAccount';
-
-        await ctx.stub.putState(
-            energyAccountInput.energyAccountMarketDocumentMrid,
-            Buffer.from(JSON.stringify(energyAccountInput)),
-        );
-        console.info(
-            '============= END   : Create %s EnergyAccount ===========',
-            energyAccountInput.energyAccountMarketDocumentMrid,
-        );
+        return energyAccountInput;
     }
 
     public static async getEnergyAccountForSystemOperator(
@@ -180,6 +204,25 @@ export class EnergyAccountController {
         return JSON.stringify(allResults);
     }
 
+    public static async getEnergyAccountByQuery(
+        ctx: Context,
+        query: string, pageSize: number, bookmark: string): Promise<any> {
+        const identity = await ctx.stub.getMspID();
+        if (identity !== OrganizationTypeMsp.RTE && identity !== OrganizationTypeMsp.ENEDIS) {
+            throw new Error(`Organisation, ${identity} does not have read access for Energy Account.`);
+        }
+        let response = await ctx.stub.getQueryResultWithPagination(query, pageSize, bookmark);
+        const {iterator, metadata} = response;
+        let results = await this.getAllResults(iterator);
+        const res = {
+            records:             results,
+            fetchedRecordsCount: metadata.fetchedRecordsCount,
+            bookmark:            metadata.bookmark
+        }
+        return res;
+    }
+
+
     public static async getEnergyAccountByProducer(
         ctx: Context,
         meteringPointMrid: string,
@@ -240,5 +283,22 @@ export class EnergyAccountController {
             result = await iterator.next();
         }
         return JSON.stringify(allResults);
+    }
+
+    static async getAllResults(iterator) {
+        const allResults = [];
+        let result = await iterator.next();
+        while (!result.done) {
+            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
+            let record;
+            try {
+                record = JSON.parse(strValue);
+            } catch (err) {
+                record = strValue;
+            }
+            allResults.push(record);
+            result = await iterator.next();
+        }
+        return allResults;
     }
 }

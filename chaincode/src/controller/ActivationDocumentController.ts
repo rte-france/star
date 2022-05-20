@@ -63,8 +63,7 @@ export class ActivationDocumentController {
         if (isEmpty(activationDocumentInput.endCreatedDatetime) && isEmpty(activationDocumentInput.orderValue)) {
             throw new Error(`Order must have a limitation value`);
         }
-        if (identity === OrganizationTypeMsp.ENEDIS &&
-            activationDocumentInput.startCreatedDateTime &&
+        if (activationDocumentInput.startCreatedDateTime &&
             activationDocumentInput.endCreatedDateTime
         ) {
             const yellowAsBytes = await ctx.stub.getState(activationDocumentInput.originAutomationRegisteredResourceMrid);
@@ -139,6 +138,24 @@ export class ActivationDocumentController {
             ctx: Context, systemOperatorMrid: string): Promise<string> {
         const allResults = [];
         const query = `{"selector": {"docType": "activationDocument", "senderMarketParticipantMrid": "${systemOperatorMrid}"}}`;
+        const iterator = await ctx.stub.getQueryResult(query);
+        let result = await iterator.next();
+        while (!result.done) {
+            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
+            let record;
+            try {
+                record = JSON.parse(strValue);
+            } catch (err) {
+                record = strValue;
+            }
+            allResults.push(record);
+            result = await iterator.next();
+        }
+        return JSON.stringify(allResults);
+    }
+
+    public static async getActivationDocumentByQuery(ctx: Context, query: string): Promise<string> {
+        const allResults = [];
         const iterator = await ctx.stub.getQueryResult(query);
         let result = await iterator.next();
         while (!result.done) {

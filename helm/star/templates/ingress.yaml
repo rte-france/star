@@ -27,6 +27,27 @@ spec:
                 name: {{ $fullName }}-backend
                 port:
                   name: http
+          - path: /swagger-ui
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullName }}-backend
+                port:
+                  name: http
+          - path: /swagger-ui.html
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullName }}-backend
+                port:
+                  name: http
+          - path: /v3/api-docs
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullName }}-backend
+                port:
+                  name: http
           - path: /
             pathType: Prefix
             backend:
@@ -34,33 +55,4 @@ spec:
                 name: {{ $fullName }}-frontend
                 port:
                   name: http
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: {{ $fullName }}-tls
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "star.labels" . | nindent 4 }}
-  annotations:
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-  {{- with .Values.ingress.annotations }}
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-spec:
-  tls:
-    - hosts:
-        - {{ .Values.ingress.host | quote }}
-      secretName: {{ $fullName }}-tls
-  rules:
-    - host: {{ .Values.ingress.host | quote }}
-      http:
-        paths:
-          - path: /auth
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ (print $.Release.Name "-keycloak") | trunc 20 | trimSuffix "-" }}
-                port:
-                  name: https
 {{- end }}

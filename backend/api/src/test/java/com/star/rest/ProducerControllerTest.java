@@ -1,11 +1,10 @@
 package com.star.rest;
 
-import com.star.rest.AbstractIntTest;
-import com.star.rest.ProducerController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.apache.commons.io.IOUtils.toByteArray;
@@ -30,6 +29,7 @@ class ProducerControllerTest extends AbstractIntTest {
 
 
     @Test
+    @WithMockUser("spring")
     void importProducerFileExtensionKo() throws Exception {
         // GIVEN
         MockMultipartFile file = new MockMultipartFile("file", "producer-without-extension",
@@ -44,6 +44,7 @@ class ProducerControllerTest extends AbstractIntTest {
     }
 
     @Test
+    @WithMockUser("spring")
     void importProducerFileKoTest() throws Exception {
         // GIVEN
         MockMultipartFile file = new MockMultipartFile("file", "producer-ko.csv",
@@ -58,6 +59,7 @@ class ProducerControllerTest extends AbstractIntTest {
     }
 
     @Test
+    @WithMockUser("spring")
     void importProducerTest() throws Exception {
         // GIVEN
         MockMultipartFile file = new MockMultipartFile("file", "producer-ok.csv",

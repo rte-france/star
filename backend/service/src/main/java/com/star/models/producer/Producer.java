@@ -22,6 +22,7 @@ import java.util.List;
 @AllArgsConstructor
 public class Producer implements ImportCSV {
 
+    @JsonIgnore
     private String docType;
 
     @NotBlank(message = "Le champ producerMarketParticipantMrid est obligatoire")
@@ -53,7 +54,4 @@ public class Producer implements ImportCSV {
         this.producerMarketParticipantName = csvRecord.get(headers.get(1));
         this.producerMarketParticipantRoleType = csvRecord.get(headers.get(2));
     }
-
 }
-//producerMarketParticipantMrid;producerMarketParticipantName;producerMarketParticipantRoleType
-//        EolienFRvert28EIC;EolienFR vert Cie;A21

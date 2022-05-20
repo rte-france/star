@@ -1,15 +1,16 @@
 package com.star.rest;
 
 
-import com.star.dto.site.SiteDTOResponse;
+import com.star.dto.common.PageDTO;
+import com.star.dto.site.SiteDTO;
 import com.star.enums.InstanceEnum;
 import com.star.enums.TechnologyTypeEnum;
 import com.star.exception.BusinessException;
 import com.star.exception.TechnicalException;
-import com.star.mapper.site.SiteResponseMapper;
+import com.star.mapper.site.SitePageMapper;
 import com.star.models.site.ImportSiteResult;
 import com.star.models.site.SiteCrteria;
-import com.star.security.SecurityUtils;
+import com.star.security.SecurityComponent;
 import com.star.service.SiteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,7 +59,10 @@ public class SiteController {
     private SiteService siteService;
 
     @Autowired
-    private SiteResponseMapper siteResponseMapper;
+    private SitePageMapper sitePageMapper;
+
+    @Autowired
+    private SecurityComponent securityComponent;
 
     @Operation(summary = "Post a Site CSV file.")
     @ApiResponses(value = {
@@ -66,10 +71,8 @@ public class SiteController {
             @ApiResponse(responseCode = "409", description = "Error in the file"),
             @ApiResponse(responseCode = "500", description = "Internal error")})
     @PostMapping("/create")
+    @PreAuthorize("!@securityComponent.isInstance('PRODUCER')")
     public ResponseEntity<ImportSiteResult> importSite(@RequestParam MultipartFile file) throws BusinessException {
-        if (PRODUCER.equals(instance)) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
-        }
         ImportSiteResult importSiteResult;
         try (Reader streamReader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
             importSiteResult = siteService.importSite(file.getOriginalFilename(), streamReader, instance);
@@ -88,10 +91,8 @@ public class SiteController {
             @ApiResponse(responseCode = "409", description = "Error in the file"),
             @ApiResponse(responseCode = "500", description = "Internal error")})
     @PostMapping("/update")
+    @PreAuthorize("!@securityComponent.isInstance('PRODUCER')")
     public ResponseEntity<ImportSiteResult> updateSite(@RequestParam MultipartFile file) throws BusinessException {
-        if (PRODUCER.equals(instance)) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
-        }
         ImportSiteResult importSiteResult;
         try (Reader streamReader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
             importSiteResult = siteService.updateSite(file.getOriginalFilename(), streamReader, instance);
@@ -123,7 +124,7 @@ public class SiteController {
      * @throws TechnicalException
      */
     @GetMapping
-    public ResponseEntity<SiteDTOResponse> findSite(
+    public ResponseEntity<PageDTO<SiteDTO>> findSite(
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize,
             @RequestParam(value = "order") String order,
@@ -143,8 +144,8 @@ public class SiteController {
                 .producerMarketParticipantName(producerMarketParticipantName).siteIecCode(siteIecCode).substationMrid(substationMrid)
                 .substationName(substationName).siteName(siteName).technologyType(technologyType).instance(instance).build();
         if (PRODUCER.equals(instance)) {
-            criteria.setProducerMarketParticipantMrid(SecurityUtils.getProducerMarketParticipantMrid());
+            criteria.setProducerMarketParticipantMrid(securityComponent.getProducerMarketParticipantMrid(true));
         }
-        return ResponseEntity.status(HttpStatus.OK).body(siteResponseMapper.beanToDto(siteService.findSite(criteria, bookmark, pageRequest)));
+        return ResponseEntity.status(HttpStatus.OK).body(sitePageMapper.beanToDto(siteService.findSite(criteria, bookmark, pageRequest)));
     }
 }

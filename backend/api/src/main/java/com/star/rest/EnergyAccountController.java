@@ -1,0 +1,131 @@
+package com.star.rest;
+
+import com.star.dto.common.PageDTO;
+import com.star.dto.energyaccount.EnergyAccountDTO;
+import com.star.enums.InstanceEnum;
+import com.star.exception.BusinessException;
+import com.star.exception.TechnicalException;
+import com.star.mapper.energyaccount.EnergyAccountPageMapper;
+import com.star.models.common.FichierImportation;
+import com.star.models.common.PaginationDto;
+import com.star.models.energyaccount.EnergyAccountCriteria;
+import com.star.models.energyaccount.ImportEnergyAccountResult;
+import com.star.service.EnergyAccountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Copyright (c) 2022, Enedis (https://www.enedis.fr), RTE (http://www.rte-france.com)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+@Slf4j
+@RestController
+@RequestMapping(EnergyAccountController.PATH)
+public class EnergyAccountController {
+    public static final String PATH = ApiRestVersion.VERSION + "/energyAccounts";
+
+    @Value("${instance}")
+    private InstanceEnum instance;
+    @Autowired
+    private EnergyAccountPageMapper energyAccountPageMapper;
+
+    @Autowired
+    private EnergyAccountService energyAccountService;
+
+    @Operation(summary = "Post an Energy Account.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Post successfully an Energy Account",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "409", description = "Error in the file"),
+            @ApiResponse(responseCode = "500", description = "Internal error")})
+    @PostMapping
+    @PreAuthorize("!@securityComponent.isInstance('PRODUCER')")
+    public ResponseEntity<ImportEnergyAccountResult> createEnergyAccount(@RequestParam MultipartFile[] files) throws BusinessException {
+        return importEnergyAccount(files, true);
+    }
+
+    @Operation(summary = "Update an Energy Account.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Update successfully an Energy Account",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "409", description = "Error in the file"),
+            @ApiResponse(responseCode = "500", description = "Internal error")})
+    @PutMapping
+    @PreAuthorize("!@securityComponent.isInstance('PRODUCER')")
+    public ResponseEntity<ImportEnergyAccountResult> updateEnergyAccount(@RequestParam MultipartFile[] files) throws BusinessException {
+        return importEnergyAccount(files, false);
+    }
+
+    /**
+     * Recherche multi-critère des courbes de comptage
+     *
+     * @param pageSize
+     * @param bookmark
+     * @param meteringPointMrid
+     * @param startCreatedDateTime
+     * @param endCreatedDateTime
+     * @return
+     * @throws BusinessException
+     * @throws TechnicalException
+     */
+    @GetMapping
+    @PreAuthorize("!@securityComponent.isInstance('PRODUCER')")
+    public ResponseEntity<PageDTO<EnergyAccountDTO>> findEnergyAccount(
+            @RequestParam(required = false, defaultValue = "10") int pageSize,
+            @RequestParam(required = false, defaultValue = "") String bookmark,
+            @RequestParam(value = "meteringPointMrid", required = false) String meteringPointMrid,
+            @RequestParam(value = "startCreatedDateTime", required = false) String startCreatedDateTime,
+            @RequestParam(value = "endCreatedDateTime", required = false) String endCreatedDateTime) throws BusinessException, TechnicalException {
+
+        PaginationDto paginationDto = PaginationDto.builder()
+                .pageSize(pageSize)
+                .build();
+        EnergyAccountCriteria energyAccountCriteria = EnergyAccountCriteria.builder().meteringPointMrid(meteringPointMrid)
+                .startCreatedDateTime(startCreatedDateTime).endCreatedDateTime(endCreatedDateTime).build();
+
+        return ResponseEntity.status(HttpStatus.OK).body(energyAccountPageMapper.beanToDto(energyAccountService.findEnergyAccount(energyAccountCriteria, bookmark, paginationDto)));
+    }
+
+    private ResponseEntity<ImportEnergyAccountResult> importEnergyAccount(MultipartFile[] files, boolean create) throws BusinessException {
+        if (files == null || files.length == 0) {
+            throw new IllegalArgumentException("Files must not be empty");
+        }
+        ImportEnergyAccountResult importEnergyAccountResult;
+        try {
+            List<FichierImportation> fichiers = new ArrayList<>();
+            for (MultipartFile file : files) {
+                fichiers.add(new FichierImportation(file.getOriginalFilename(), file.getInputStream()));
+            }
+            if (create) {
+                importEnergyAccountResult = energyAccountService.createEnergyAccount(fichiers, instance);
+            } else {
+                importEnergyAccountResult = energyAccountService.updateEnergyAccount(fichiers, instance);
+            }
+        } catch (IOException | TechnicalException exception) {
+            log.error("Echec de l'import  du fichier {}. Erreur : ", exception);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        HttpStatus httpStatus = create ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(CollectionUtils.isEmpty(importEnergyAccountResult.getDatas()) ? HttpStatus.CONFLICT : httpStatus).body(importEnergyAccountResult);
+    }
+}

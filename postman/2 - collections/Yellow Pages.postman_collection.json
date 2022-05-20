@@ -1,0 +1,141 @@
+{
+	"info": {
+		"_postman_id": "3f2f7ade-6f2d-491a-9059-d3832de64ce2",
+		"name": "Yellow Pages",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "RTE - Post a yellow pages",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url_rte}}/yellow-pages",
+					"host": [
+						"{{base_url_rte}}"
+					],
+					"path": [
+						"yellow-pages"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "RTE - List of yellow pages",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{base_url_rte}}/yellow-pages",
+					"host": [
+						"{{base_url_rte}}"
+					],
+					"path": [
+						"yellow-pages"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ENEDIS - Post a yellow pages",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url_enedis}}/yellow-pages",
+					"host": [
+						"{{base_url_enedis}}"
+					],
+					"path": [
+						"yellow-pages"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ENEDIS - List of yellow pages",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{base_url_enedis}}/yellow-pages",
+					"host": [
+						"{{base_url_enedis}}"
+					],
+					"path": [
+						"yellow-pages"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

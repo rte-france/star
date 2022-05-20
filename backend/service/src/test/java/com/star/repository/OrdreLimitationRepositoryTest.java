@@ -3,7 +3,7 @@ package com.star.repository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.star.AbstractTest;
 import com.star.exception.TechnicalException;
-import com.star.models.limitation.OrdreDebutLimitation;
+import com.star.models.limitation.OrdreLimitation;
 import org.hyperledger.fabric.gateway.ContractException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -17,6 +17,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
@@ -38,7 +39,7 @@ class OrdreLimitationRepositoryTest extends AbstractTest {
         // GIVEN
 
         // WHEN
-        ordreLimitationRepository.saveOrdreDebutLimitations(Collections.emptyList());
+        ordreLimitationRepository.saveOrdreLimitations(Collections.emptyList());
 
         // THEN
         verifyNoInteractions(contract);
@@ -47,18 +48,31 @@ class OrdreLimitationRepositoryTest extends AbstractTest {
     @Test
     void testSaveOrdreLimitations() throws TechnicalException, InterruptedException, TimeoutException, ContractException, JsonProcessingException {
         // GIVEN
-        OrdreDebutLimitation ordreDebutLimitation = OrdreDebutLimitation.builder().activationDocumentMrid("activation_id")
+        OrdreLimitation ordreLimitation = OrdreLimitation.builder().activationDocumentMrid("activation_id")
                 .originAutomationRegisteredResourceMrid("origin_mrid").registeredResourceMrid("register_id")
                 .orderValue("orderValue").measurementUnitName("mt_unit").messageType("message_type").orderEnd(false).build();
-        String value = ordreDebutLimitation.toString();
-        Mockito.when(objectMapper.writeValueAsString(any())).thenReturn(value);
 
         // WHEN
-        ordreLimitationRepository.saveOrdreDebutLimitations(Arrays.asList(ordreDebutLimitation));
+        ordreLimitationRepository.saveOrdreLimitations(Arrays.asList(ordreLimitation));
 
         // THEN
         Mockito.verify(contract, Mockito.times(1)).submitTransaction(functionNameArgumentCaptor.capture(), objectArgumentCaptor.capture());
         assertThat(functionNameArgumentCaptor.getValue()).isEqualTo(ordreLimitationRepository.CREATE);
-        assertThat(objectArgumentCaptor.getValue()).isEqualTo(value);
+        assertThat(objectArgumentCaptor.getValue()).isNotNull();
     }
+
+    @Test
+    void findLimitationOrders() throws ContractException, TechnicalException {
+        // GIVEN
+        Mockito.when(contract.evaluateTransaction(any())).thenReturn(null);
+        var anyArguments = "myArgs...";
+
+        // WHEN
+        ordreLimitationRepository.findLimitationOrders(anyArguments);
+
+        // THEN
+        Mockito.verify(contract, Mockito.times(1)).evaluateTransaction(functionNameArgumentCaptor.capture(), eq(anyArguments));
+        assertThat(functionNameArgumentCaptor.getValue()).isEqualTo(OrdreLimitationRepository.GET_BY_QUERY);
+    }
+
 }

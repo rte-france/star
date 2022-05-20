@@ -8,7 +8,6 @@ import {
 } from '../../micro-components/uploader-fichier/uploader-fichier.component';
 import { tailleFichierToStr } from '../../micro-components/uploader-fichier/uploader-fichier-tools';
 import { OrdreLimitationService } from './../../../services/api/ordre-limitation.service';
-import { PATH_ROUTE } from 'src/app/app-routing.module';
 
 @Component({
   selector: 'app-form-ordre-debut-limitation',
@@ -16,9 +15,7 @@ import { PATH_ROUTE } from 'src/app/app-routing.module';
   styleUrls: ['./form-ordre-debut-limitation.component.css'],
 })
 export class FormOrdreDebutLimitationComponent implements OnInit {
-  form: FormGroup = this.formBuilder.group({}); // Il n'y a pas besoin de formulaire ici (car seulement un fichier à uploader)
-
-  PATH_ROUTE = PATH_ROUTE;
+  form: FormGroup = this.formBuilder.group({});
 
   tailleMaxUploadFichiers = environment.tailleMaxUploadFichiers;
   tailleMaxUploadFichiersStr = '...';
@@ -43,7 +40,7 @@ export class FormOrdreDebutLimitationComponent implements OnInit {
 
   onSubmit() {
     const form: FormulaireOrdreDebutLimitationFichier = {
-      files: this.listeFichiers.map((f) => f.file), // On upload ici un seul fichier
+      files: this.listeFichiers.map((f) => f.file),
     };
     this.ordreLimitationService.creerOrdreDebutAvecFichiers(form).subscribe(
       (ok) => {

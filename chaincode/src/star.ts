@@ -12,6 +12,7 @@ import { SiteController } from './controller/SiteController';
 import { SystemOperatorController } from './controller/SystemOperatorController';
 import { ViewMarketParticipantController } from './controller/ViewMarketParticipantController';
 import { YellowPagesController } from './controller/YellowPagesController';
+import {HistoriqueActivationController} from "./controller/HistoriqueActivationController";
 
 export class Star extends Contract {
 
@@ -225,6 +226,29 @@ export class Star extends Contract {
         }
     }
 
+    public async GetActivationDocumentByQuery(
+        ctx: Context,
+        query: string) {
+        try {
+            return (await ActivationDocumentController.getActivationDocumentByQuery(ctx, query));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /*      Historique limitation       */
+    public async GetHistoriqueWithPagination(
+        ctx: Context,
+        query: string, pageSize: number, bookmark: string) {
+        try {
+            return (await HistoriqueActivationController.getHistoriqueByQuery(ctx, query, pageSize, bookmark));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+
+
     /*      Yellow Pages       */
 
     public async CreateYellowPages(ctx: Context, inputStr: string) {
@@ -253,6 +277,15 @@ export class Star extends Contract {
             throw error;
         }
     }
+
+    public async UpdateEnergyAccount(ctx: Context, inputStr: string) {
+        try {
+            return (await EnergyAccountController.updateEnergyAccount(ctx, inputStr));
+        } catch (error) {
+            throw error;
+        }
+    }
+
 
     public async GetEnergyAccountForSystemOperator(
         ctx: Context,
@@ -287,6 +320,16 @@ export class Star extends Contract {
                     startCreatedDateTime,
                 )
             );
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async GetEnergyAccountWithPagination(
+        ctx: Context,
+        query: string, pageSize: number, bookmark: string) {
+        try {
+            return (await EnergyAccountController.getEnergyAccountByQuery(ctx, query, pageSize, bookmark));
         } catch (error) {
             throw error;
         }
@@ -391,6 +434,16 @@ export class Star extends Contract {
                     startCreatedDateTime,
                 )
             );
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async GetEnergyAmountWithPagination(
+        ctx: Context,
+        query: string, pageSize: number, bookmark: string) {
+        try {
+            return (await EnergyAmountController.getEnergyAmountByQuery(ctx, query, pageSize, bookmark));
         } catch (error) {
             throw error;
         }
