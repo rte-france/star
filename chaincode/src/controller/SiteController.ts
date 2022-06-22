@@ -1,11 +1,19 @@
 import { Context } from 'fabric-contract-api';
+
 import { OrganizationTypeMsp } from '../enums/OrganizationMspType';
+import { ParametersType } from '../enums/ParametersType';
+
+import { STARParameters } from '../model/starParameters';
 import { Site } from '../model/site';
 
-export class SiteController {
+import { SiteService } from './service/SiteService';
+import { SystemOperatorService } from './service/SystemOperatorService';
+import { ProducerService } from './service/ProducerService';
 
+export class SiteController {
     public static async createSite(
         ctx: Context,
+        params: STARParameters,
         inputStr: string): Promise<void> {
         // let site: Site;
         // try {
@@ -14,10 +22,8 @@ export class SiteController {
         //     // console.error('error=', error);
         //     throw new Error(`ERROR createSite-> Input string NON-JSON value`);
         //   }
-        // console.info(
-        //     '============= START : Create %s Site ===========',
-        //     siteInput.meteringPointMrid,
-        // );
+        console.info('============= START : Create Site ===========');
+
         let siteObj: Site;
         try {
             siteObj = JSON.parse(inputStr);
@@ -25,171 +31,185 @@ export class SiteController {
             throw new Error(`ERROR createSite-> Input string NON-JSON value`);
         }
 
-        const siteInput = Site.schema.validateSync(
+        Site.schema.validateSync(
             siteObj,
             {strict: true, abortEarly: false},
         );
 
-        const identity = await ctx.stub.getMspID();
-        if (siteInput.marketEvaluationPointMrid && siteInput.schedulingEntityRegisteredResourceMrid) {
+        const identity = params.values.get(ParametersType.IDENTITY);
+        if (siteObj.marketEvaluationPointMrid && siteObj.schedulingEntityRegisteredResourceMrid) {
             if (identity !== OrganizationTypeMsp.RTE) {
                 throw new Error(`Organisation, ${identity} does not have write access for HTB(HV) sites`);
             }
-        } else if (!siteInput.marketEvaluationPointMrid && !siteInput.schedulingEntityRegisteredResourceMrid) {
+        } else if (!siteObj.marketEvaluationPointMrid && !siteObj.schedulingEntityRegisteredResourceMrid) {
             if (identity !== OrganizationTypeMsp.ENEDIS) {
                 throw new Error(`Organisation, ${identity} does not have write access for HTA(MV) sites`);
             }
         } else {
             throw new Error(`marketEvaluationPointMrid and schedulingEntityRegisteredResourceMrid must be both present for HTB site or absent for HTA site.`);
         }
-        const systemOperatorAsBytes = await ctx.stub.getState(siteInput.systemOperatorMarketParticipantMrid);
-        if (!systemOperatorAsBytes || systemOperatorAsBytes.length === 0) {
-            throw new Error(`System Operator : ${siteInput.systemOperatorMarketParticipantMrid} does not exist for site creation`);
+        try {
+            await SystemOperatorService.getRaw(ctx, siteObj.systemOperatorMarketParticipantMrid);
+        } catch(error) {
+            throw new Error(error.message.concat(' for site creation'));
         }
 
-        const producerAsBytes = await ctx.stub.getState(siteInput.producerMarketParticipantMrid);
-
-        if (!producerAsBytes || producerAsBytes.length === 0) {
-            throw new Error(`Producer : ${siteInput.producerMarketParticipantMrid} does not exist for site creation`);
+        try {
+            ProducerService.getRaw(ctx, siteObj.producerMarketParticipantMrid);
+        } catch(error) {
+            throw new Error(error.message.concat(' for site creation'));
         }
-        siteInput.docType = 'site';
-        await ctx.stub.putState(siteInput.meteringPointMrid, Buffer.from(JSON.stringify(siteInput)));
+
+        await SiteService.write(ctx, params, siteObj);
         console.info(
             '============= END   : Create %s Site ===========',
-            siteInput.meteringPointMrid,
+            siteObj.meteringPointMrid,
         );
     }
 
-    public static async updateSite(ctx: Context, inputStr: string): Promise<void> {
+
+
+
+
+    public static async updateSite(
+        ctx: Context,
+        params: STARParameters,
+        inputStr: string): Promise<void> {
+
         let siteObj: Site;
         try {
             siteObj = JSON.parse(inputStr);
         } catch (error) {
             throw new Error(`ERROR updateSite-> Input string NON-JSON value`);
         }
-        const siteInput = Site.schema.validateSync(
+        Site.schema.validateSync(
             siteObj,
             {strict: true, abortEarly: false},
         );
-        const identity = await ctx.stub.getMspID();
-        if (siteInput.marketEvaluationPointMrid && siteInput.schedulingEntityRegisteredResourceMrid) {
+        const identity = params.values.get(ParametersType.IDENTITY);
+        if (siteObj.marketEvaluationPointMrid && siteObj.schedulingEntityRegisteredResourceMrid) {
             if (identity !== OrganizationTypeMsp.RTE) {
                 throw new Error(`Organisation, ${identity} does not have write access for HTB(HV) sites`);
             }
-        } else if (!siteInput.marketEvaluationPointMrid && !siteInput.schedulingEntityRegisteredResourceMrid) {
+        } else if (!siteObj.marketEvaluationPointMrid && !siteObj.schedulingEntityRegisteredResourceMrid) {
             if (identity !== OrganizationTypeMsp.ENEDIS) {
                 throw new Error(`Organisation, ${identity} does not have write access for HTA(MV) sites`);
             }
         } else {
             throw new Error(`marketEvaluationPointMrid and schedulingEntityRegisteredResourceMrid must be both present for HTB site or absent for HTA site.`);
         }
-        const siteAsBytes = await ctx.stub.getState(siteInput.meteringPointMrid);
+        const siteAsBytes = await SiteService.getRaw(ctx, params, siteObj.meteringPointMrid);
         if (!siteAsBytes || siteAsBytes.length === 0) {
-            throw new Error(`${siteInput} does not exist. Can not be updated.`);
-        }
-        const systemOperatorAsBytes = await ctx.stub.getState(siteInput.systemOperatorMarketParticipantMrid);
-        if (!systemOperatorAsBytes || systemOperatorAsBytes.length === 0) {
-            throw new Error(`System Operator : ${siteInput.systemOperatorMarketParticipantMrid} does not exist for site update`);
-        }
-        const producerAsBytes = await ctx.stub.getState(siteInput.producerMarketParticipantMrid);
-        if (!producerAsBytes || producerAsBytes.length === 0) {
-            throw new Error(`Producer : ${siteInput.producerMarketParticipantMrid} does not exist for site update`);
+            throw new Error(`${siteObj} does not exist. Can not be updated.`);
         }
 
-        siteInput.docType = 'site';
-        await ctx.stub.putState(siteInput.meteringPointMrid, Buffer.from(JSON.stringify(siteInput)));
+        try {
+            await SystemOperatorService.getRaw(ctx, siteObj.systemOperatorMarketParticipantMrid);
+        } catch(error) {
+            throw new Error(error.message.concat(' for site update'));
+        }
+
+        try {
+            await ProducerService.getRaw(ctx, siteObj.producerMarketParticipantMrid);
+        } catch(error) {
+            throw new Error(error.message.concat(' for site update'));
+        }
+
+        await SiteService.write(ctx, params, siteObj);
         console.info(
             '============= END : Update %s Site ===========',
-            siteInput.meteringPointMrid,
+            siteObj.meteringPointMrid,
         );
     }
 
-    public static async querySite(ctx: Context, site: string): Promise<string> {
-        console.info('============= START : Query %s Site ===========', site);
-        const siteAsBytes = await ctx.stub.getState(site);
-        if (!siteAsBytes || siteAsBytes.length === 0) {
-            throw new Error(`${site} does not exist`);
-        }
-        console.info('============= END   : Query %s Site ===========');
-        console.info(site, siteAsBytes.toString());
+
+
+
+    public static async querySite(
+        ctx: Context,
+        params: STARParameters,
+        siteId: string): Promise<string> {
+
+        console.info('============= START : Query %s Site ===========', siteId);
+        const siteAsBytes = await SiteService.getRaw(ctx, params, siteId);
+        console.debug(siteId, siteAsBytes.toString());
+        console.info('============= END   : Query %s Site ===========', siteId);
         return siteAsBytes.toString();
     }
 
-    public static async siteExists(ctx: Context, site: string): Promise<boolean> {
-        console.info('============= START : Query %s Site ===========', site);
-        const siteAsBytes = await ctx.stub.getState(site);
+
+
+
+    public static async siteExists(
+        ctx: Context,
+        params: STARParameters,
+        siteId: string): Promise<boolean> {
+
+        console.info('============= START : Query %s Site ===========', siteId);
+        const siteAsBytes = await SiteService.getRaw(ctx, params, siteId);
         return siteAsBytes && siteAsBytes.length !== 0;
     }
 
+
+
+
     public static async getSitesBySystemOperator(
         ctx: Context,
+        params: STARParameters,
         systemOperatorMarketParticipantMrid: string): Promise<string> {
 
-        const allResults = [];
         const query = `{"selector": {"docType": "site", "systemOperatorMarketParticipantMrid": "${systemOperatorMarketParticipantMrid}"}}`;
-        const iterator = await ctx.stub.getQueryResult(query);
-        let result = await iterator.next();
-        while (!result.done) {
-            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
-            let record;
-            try {
-                record = JSON.parse(strValue);
-            } catch (err) {
-                record = strValue;
-            }
-            allResults.push(record);
-            result = await iterator.next();
-        }
-        return JSON.stringify(allResults);
+        const allResults = await SiteService.getQueryStringResult(ctx, params, query);
+
+        return allResults;
     }
 
-    public static async getSitesByProducer(ctx: Context, producerMarketParticipantMrid: string): Promise<string> {
-        const allResults = [];
+
+
+
+    public static async getSitesByProducer(
+        ctx: Context,
+        params: STARParameters,
+        producerMarketParticipantMrid: string): Promise<string> {
+
         const query = `{"selector": {"docType": "site", "producerMarketParticipantMrid": "${producerMarketParticipantMrid}"}}`;
-        const iterator = await ctx.stub.getQueryResult(query);
-        let result = await iterator.next();
-        while (!result.done) {
-            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
-            let record;
-            try {
-                record = JSON.parse(strValue);
-            } catch (err) {
-                record = strValue;
-            }
-            allResults.push(record);
-            result = await iterator.next();
-        }
-        return JSON.stringify(allResults);
+        const allResults = await SiteService.getQueryStringResult(ctx, params, query);
+
+        return allResults;
     }
+
+
+
 
     public static async getSitesByQuery(
         ctx: Context,
-        query: string, pageSize: number, bookmark: string): Promise<any> {
-        let response = await ctx.stub.getQueryResultWithPagination(query, pageSize, bookmark);
-        const {iterator, metadata} = response;
-        let results = await this.getAllResults(iterator);
-        const res = {
-            records:             results,
-            fetchedRecordsCount: metadata.fetchedRecordsCount,
-            bookmark:            metadata.bookmark
-        }
-        return res;
+        params: STARParameters,
+        query: string): Promise<any> {
+
+        //Implementaition calling QueryResult (without Pagination)
+        // const iterator = await SiteService.getQueryResult(ctx, query);
+        // let results = await this.getAllResults(iterator);
+
+        let results = await SiteService.getQueryArrayResult(ctx, params, query);
+
+        return results;
     }
 
-    static async getAllResults(iterator) {
-        const allResults = [];
-        let result = await iterator.next();
-        while (!result.done) {
-            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
-            let record;
-            try {
-                record = JSON.parse(strValue);
-            } catch (err) {
-                record = strValue;
-            }
-            allResults.push(record);
-            result = await iterator.next();
-        }
-        return allResults;
-    }
+
+    // static async getAllResults(iterator: Iterators.StateQueryIterator): Promise<any[]> {
+    //     const allResults = [];
+    //     let result = await iterator.next();
+    //     while (!result.done) {
+    //         const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
+    //         let record;
+    //         try {
+    //             record = JSON.parse(strValue);
+    //         } catch (err) {
+    //             record = strValue;
+    //         }
+    //         allResults.push(record);
+    //         result = await iterator.next();
+    //     }
+    //     return allResults;
+    // }
 }

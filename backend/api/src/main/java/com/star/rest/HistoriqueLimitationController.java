@@ -11,6 +11,7 @@ import com.star.models.historiquelimitation.HistoriqueLimitationCriteria;
 import com.star.security.SecurityComponent;
 import com.star.service.HistoriqueLimitationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -48,20 +49,50 @@ public class HistoriqueLimitationController {
     @Autowired
     private SecurityComponent securityComponent;
 
+    /**
+     * API de recherche multi-critères des historiques de limitation
+     *
+     * @param pageSize
+     * @param order
+     * @param orderDirection
+     * @param bookmark
+     * @param originAutomationRegisteredResourceMrid
+     * @param producerMarketParticipantMrid
+     * @param siteName
+     * @param startCreatedDateTime
+     * @param endCreatedDateTime
+     * @param activationDocumentMrid
+     * @return
+     * @throws TechnicalException
+     */
     @Operation(summary = "Get limitation history.")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Get limitation history",
-            content = {@Content(mediaType = "application/json")})})
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Get limitation history", content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Internal error", content = @Content)
+    })
     @GetMapping()
     public ResponseEntity<PageDTO<HistoriqueLimitationDTO>> findLimitationHistory(
+            @Parameter(description = "Number of responses per page")
             @RequestParam(required = false, defaultValue = "10") int pageSize,
+            @Parameter(description = "order search criteria")
             @RequestParam(required = false) String order,
+            @Parameter(description = "orderDirection (asc or desc) search criteria")
             @RequestParam(required = false, defaultValue = "asc") OrderDirection orderDirection,
+            @Parameter(description = "bookmark search criteria")
             @RequestParam(required = false, defaultValue = "") String bookmark,
+            @Parameter(description = "originAutomationRegisteredResourceMrid search criteria")
             @RequestParam(required = false, defaultValue = "") String originAutomationRegisteredResourceMrid,
+            @Parameter(description = "producerMarketParticipantMrid search criteria")
             @RequestParam(required = false, defaultValue = "") String producerMarketParticipantMrid,
+            @Parameter(description = "producerMarketParticipantName search criteria")
+            @RequestParam(required = false, defaultValue = "") String producerMarketParticipantName,
+            @Parameter(description = "siteName search criteria")
             @RequestParam(required = false, defaultValue = "") String siteName,
+            @Parameter(description = "startCreatedDateTime search criteria")
             @RequestParam(required = false, defaultValue = "") String startCreatedDateTime,
+            @Parameter(description = "endCreatedDateTime search criteria")
             @RequestParam(required = false, defaultValue = "") String endCreatedDateTime,
+            @Parameter(description = "activationDocumentMrid search criteria")
             @RequestParam(required = false, defaultValue = "") String activationDocumentMrid
     ) throws TechnicalException {
         var pagination = PaginationDto.builder()
@@ -71,6 +102,7 @@ public class HistoriqueLimitationController {
                 .build();
         var criteria = HistoriqueLimitationCriteria.builder()
                 .originAutomationRegisteredResourceMrid(originAutomationRegisteredResourceMrid)
+                .producerMarketParticipantName(producerMarketParticipantName)
                 .producerMarketParticipantMrid(producerMarketParticipantMrid)
                 .siteName(siteName)
                 .startCreatedDateTime(startCreatedDateTime)

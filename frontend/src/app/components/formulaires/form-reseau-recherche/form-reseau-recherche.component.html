@@ -5,8 +5,8 @@
   <div class="row">
 
     <mat-form-field class="col-6 col-lg-2 pe-lg-0" appearance="outline">
-      <mat-label>Type de recherche</mat-label>
-      <mat-select formControlName="typeDeRechercheSimple">
+      <mat-label>Critères de recherche du site</mat-label>
+      <mat-select formControlName="typeDeRechercheSimple" (valueChange)="typeRechercheSimpleChange()">
         <mat-option *ngFor="let t of typesDeRechercheSimple" [value]="t">{{ t | TypeDeRechercheSimple }}</mat-option>
       </mat-select>
     </mat-form-field>
@@ -20,42 +20,67 @@
         <mat-option *ngFor="let t of TechnologyTypeEnum | keyvalue" [value]="t.key">{{ t.value | TechnologyType }}</mat-option>
       </mat-select>
     </mat-form-field>
-    
+
     <mat-form-field class="col-12 col-lg-8 ps-lg-2" appearance="outline">
       <mat-label>{{ form.value.typeDeRechercheSimple | TypeDeRechercheSimple }}</mat-label>
-      <input matInput [placeholder]="form.value.typeDeRechercheSimple | TypeDeRechercheSimple" type="text" formControlName="champDeRechercheSimple">
+      <input matInput [placeholder]="form.value.typeDeRechercheSimple | TypeDeRechercheSimple" type="text" formControlName="champDeRechercheSimple" [matAutocomplete]="rechercheSimpleAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #rechercheSimpleAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredRechercheSimple | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
       <button matSuffix mat-icon-button class="calageMatSuffixButtonIcon" (click)="switchRechercheAvancee()" type="button">
         <i class="fas fa-sliders-h" [ngClass]="{'text-primary':rechercheAvancee}"></i>
       </button>
       <button class="ms-3 calageMatSuffixButton" mat-raised-button matSuffix color="primary" [disabled]="form.invalid" type="submit" *ngIf="!rechercheAvancee">Rechercher</button>
     </mat-form-field>
-    
+
   </div>
-  
+
 
 
   <!-- Recherche avancée : DSO ET TSO -->
 
   <div class="row mt-3" *ngIf="rechercheAvancee && typeInstance != InstanceEnum.PRODUCER" [formGroup]="$any(form.get('valeursRecherchees'))">
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
       <mat-label>Code Poste Source</mat-label>
-      <input matInput placeholder="Code Poste Source" type="text" formControlName="substationMrid">
+      <input matInput placeholder="Code Poste Source" type="text" formControlName="substationMrid" [matAutocomplete]="substationMridAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #substationMridAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredSubstationMrids | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
       <mat-label>Nom Poste Source</mat-label>
-      <input matInput placeholder="Nom Poste Source" type="text" formControlName="substationName">
+      <input matInput placeholder="Nom Poste Source" type="text" formControlName="substationName" [matAutocomplete]="substationNameAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #substationNameAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredSubstationNames | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
-      <mat-label>Code EIC</mat-label>
-      <input matInput placeholder="Code EIC" type="text" formControlName="producerMarketParticipantMrid">
+      <mat-label>Code EIC producteur</mat-label>
+      <input matInput placeholder="Code EIC producteur" type="text" formControlName="producerMarketParticipantMrid" [matAutocomplete]="producerMarketParticipantMridAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #producerMarketParticipantMridAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredProducerMarketParticipantMrids | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
       <mat-label>Nom Producteur</mat-label>
-      <input matInput placeholder="Poste Source" type="text" formControlName="producerMarketParticipantName">
+      <input matInput placeholder="Nom Producteur" type="text" formControlName="producerMarketParticipantName" [matAutocomplete]="producerMarketParticipantNameAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #producerMarketParticipantNameAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredProducerNames | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
 
     <div class="col-12 text-center mt-3">
@@ -68,25 +93,45 @@
   <!-- Recherche avancée : Producteur -->
 
   <div class="row mt-3" *ngIf="rechercheAvancee && typeInstance == InstanceEnum.PRODUCER" [formGroup]="$any(form.get('valeursRecherchees'))">
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
       <mat-label>Code Poste Source</mat-label>
-      <input matInput placeholder="Code Poste Source" type="text" formControlName="substationMrid">
+      <input matInput placeholder="Code Poste Source" type="text" formControlName="substationMrid" [matAutocomplete]="substationMridAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #substationMridAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredSubstationMrids | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
       <mat-label>Nom Poste Source</mat-label>
-      <input matInput placeholder="Nom Poste Source" type="text" formControlName="substationName">
+      <input matInput placeholder="Nom Poste Source" type="text" formControlName="substationName" [matAutocomplete]="substationNameAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #substationNameAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredSubstationNames | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
       <mat-label>Code EIC</mat-label>
-      <input matInput placeholder="Code EIC" type="text" formControlName="siteIecCode">
+      <input matInput placeholder="Code EIC" type="text" formControlName="siteIecCode" [matAutocomplete]="siteIecCodeAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #siteIecCodeAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredSiteIecCodes | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
-    
+
     <mat-form-field class="col-12 col-lg-6" appearance="outline">
       <mat-label>Code Site</mat-label>
-      <input matInput placeholder="Code Site" type="text" formControlName="meteringpointmrId">
+      <input matInput placeholder="Code Site" type="text" formControlName="meteringPointMrId" [matAutocomplete]="meteringPointMrIdAutocomplete">
+      <mat-autocomplete autoActiveFirstOption #meteringPointMrIdAutocomplete="matAutocomplete">
+        <mat-option *ngFor="let option of filteredMeteringPointMrIds | async" [value]="option">
+          {{option}}
+        </mat-option>
+      </mat-autocomplete>
     </mat-form-field>
 
     <div class="col-12 text-center mt-3">

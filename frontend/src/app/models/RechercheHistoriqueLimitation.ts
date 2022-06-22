@@ -3,10 +3,10 @@ import { OrdreRechercheHistoriqueLimitation } from './enum/OrdreRechercheHistori
 import { TechnologyType } from './enum/TechnologyType.enum';
 import { TypeSite } from './enum/TypeSite.enum';
 import { Motif } from './Motifs';
-import { FormulairePagination } from './Pagination';
+import { FormulairePagination } from './RequestForm';
 
 export interface FormulaireRechercheHistoriqueLimitation {
-  originAutomationRegisteredResourceMrid: string;
+  originAutomationRegisteredResourceName: string;
   producerMarketParticipantMrid: string;
   siteName: string;
   startCreatedDateTime: string; // JSON

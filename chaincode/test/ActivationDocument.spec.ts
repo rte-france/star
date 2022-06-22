@@ -1,126 +1,61 @@
-
 'use strict';
 const sinon = require('sinon');
 const chai = require('chai');
+const chaiAsPromised = require('chai-as-promised');
 const sinonChai = require('sinon-chai');
 const expect = chai.expect;
 
-import { Context } from 'fabric-contract-api'
-import { ChaincodeStub } from 'fabric-shim'
+import { ChaincodeStub, ClientIdentity } from 'fabric-shim'
 
 import { Star } from '../src/star'
-import { Site } from '../src/model/site';
 import { ActivationDocument } from '../src/model/activationDocument';
-import { YellowPages } from '../src/model/yellowPages';
+import { STARParameters } from '../src/model/starParameters';
 
-let assert = sinon.assert;
-chai.use(sinonChai);
+import { OrganizationTypeMsp } from '../src/enums/OrganizationMspType';
+
+import { Values } from './Values';
+import { ParametersController } from '../src/controller/ParametersController';
+import { ParametersType } from '../src/enums/ParametersType';
+import { DocType } from '../src/enums/DocType';
+import { RoleType } from '../src/enums/RoleType';
+import { DataReference } from '../src/model/dataReference';
+import { QueryStateService } from '../src/controller/service/QueryStateService';
+
+class TestContext {
+    clientIdentity: any;
+    stub: any;
+
+    constructor() {
+        this.clientIdentity = sinon.createStubInstance(ClientIdentity);
+        this.clientIdentity.getMSPID.returns(Values.FakeMSP);
+        this.stub = sinon.createStubInstance(ChaincodeStub);
+    }
+
+}
+function ChaincodeMessageHandler(ChaincodeMessageHandler: any): any {
+    throw new Error('Function not implemented.');
+}
+
 
 describe('Star Tests ActivationDocument', () => {
-    let transactionContext, chaincodeStub;
+    let transactionContext: any;
+    let mockHandler:any;
+    let star: Star;
     beforeEach(() => {
-        transactionContext = new Context();
+        transactionContext = new TestContext();
+        star = new Star();
+        mockHandler = sinon.createStubInstance(ChaincodeMessageHandler);
 
-        chaincodeStub = sinon.createStubInstance(ChaincodeStub);
-        transactionContext.setChaincodeStub(chaincodeStub);
-        chaincodeStub.MspiID = 'FakeMspID'
-
-        chaincodeStub.putState.callsFake((key, value) => {
-            if (!chaincodeStub.states) {
-                chaincodeStub.states = {};
-            }
-            chaincodeStub.states[key] = value;
-        });
-
-        chaincodeStub.getState.callsFake(async (key) => {
-            let ret;
-            if (chaincodeStub.states) {
-                ret = chaincodeStub.states[key];
-            }
-            return Promise.resolve(ret);
-        });
-
-        chaincodeStub.getQueryResult.callsFake(async (query) => {
-            function* internalGetQueryResult() {
-                if (chaincodeStub.states) {
-                    const copied = Object.assign({}, chaincodeStub.states);
-                    for (let key in copied) {
-                        // console.log('copied[key]=', copied[key].toString());
-                        if (copied[key] == 'non-json-value') { 
-                            // console.log('IN IF copied[key]=', copied[key]);
-
-                            yield {value: copied[key]};
-                            continue
-                        }
-                        const obJson = JSON.parse(copied[key].toString('utf8'));
-                        // console.log('obJson=', obJson);
-                        const objStr: string = obJson.docType;
-                        const queryJson = JSON.parse(query);
-                        // console.log('queryJson=', queryJson);
-                        const queryStr = queryJson.selector.docType
-                        // console.log('queryStr=', queryStr , 'objStr=', objStr);
-                        if (queryStr == objStr) {
-                            // if (queryJson.selector.systemOperatorMarketParticipantMrId) {
-                                const queryR = queryJson.selector.receiverMarketParticipantMrid;
-                                // console.log('queryR=', queryR);
-                                const objR = obJson.receiverMarketParticipantMrid;
-                                // console.log('objR=', objR);
-                                if (queryR == objR) {
-                                    // console.log('yield=', queryR, objR);
-                                    yield {value: copied[key]};
-                                }
-                                const queryS = queryJson.selector.senderMarketParticipantMrid;
-                                // console.log('queryS=', queryS);
-                                const objS = obJson.senderMarketParticipantMrid;
-                                // console.log('objS=', objS);
-                                if (queryS == objS) {
-                                    // console.log('yield=', queryS, objS);
-                                    yield {value: copied[key]};
-                                }
-                                
-                                const queryM = queryJson.selector.registeredResourceMrid;
-                                // console.log('queryM=', queryM);
-                                const objM = obJson.registeredResourceMrid;
-                                // console.log('objM=', objM);
-                                if (queryM == objM && queryJson.selector.reconciliation == obJson.reconciliation) {
-                                    // console.log('yield=', queryM, objM);
-                                    yield {value: copied[key]};
-                                }
-                            // } else if (queryJson.selector.producerMarketParticipantMrid) {
-                                // const queryProd = queryJson.selector.producerMarketParticipantMrid;
-                                // console.log('queryProd=', queryProd);
-                                // const objProd = obJson.producerMarketParticipantMrid;
-                                // console.log('objProd=', objProd);
-                                // if (queryProd == objProd) {
-                                    // console.log('yield=', queryProd, objProd);
-                                    // yield {value: copied[key]};
-                                // }
-                            // } 
-                            // else {
-                            //     yield {value: copied[key]};
-                            // }                           
-                        }
-                        // console.log('end of loop')
-                    }
-                }
-            }
-            return Promise.resolve(internalGetQueryResult());
-        });
-
-
-        chaincodeStub.getMspID.callsFake(async () => {
-            return Promise.resolve(chaincodeStub.MspiID);
-        });
-
-        // chaincodeStub.initledger.callsFake(async () => {
-
-        // });
+        chai.should();
+        chai.use(chaiAsPromised);
+        chai.use(sinonChai);
     });
+
 
     describe('Test false statement', () => {
         it('should avoid else flag missing', async () => {
-            await chaincodeStub.getState("EolienFRvert28EIC");
-            await chaincodeStub.getQueryResult("EolienFRvert28EIC");
+            await transactionContext.stub.getState("EolienFRvert28EIC");
+            await transactionContext.stub.getQueryResult("EolienFRvert28EIC");
         });
     });
 ////////////////////////////////////////////////////////////////////////////
@@ -128,63 +63,67 @@ describe('Star Tests ActivationDocument', () => {
 ////////////////////////////////////////////////////////////////////////////
 
     describe('Test CreateActivationDocument couple HTA ENEDIS', () => {
-        // it('should return ERROR on CreateActivationDocument', async () => {
-        //     chaincodeStub.putState.rejects('failed inserting key');
+        it('should return ERROR on CreateActivationDocument', async () => {
+            transactionContext.stub.putPrivateData.rejects("enedis-producer", 'failed inserting key');
 
-        //     let star = new Star();
-        //     chaincodeStub.MspiID = 'rte';
-        //     try {
-        //         await star.CreateSystemOperator(transactionContext, '17V000000992746D', 'RTE', 'A49');
-        //         // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
-        //         await star.CreateActivationDocument(transactionContext, '{\"meteringPointMrid\":\"PDL00000000289766\",\"systemOperatorMarketParticipantMrid\":\"17V000000992746D\",\"producerMarketParticipantMrid\":\"17X000001309745X\",\"technologyType\": \"Eolien\",\"siteType\":\"Injection\",\"siteName\":\"Ferme éolienne de Genonville\",\"substationMrid\":\"GDO A4RTD\",\"substationName\":\"CIVRAY\",\"marketEvaluationPointMrid\":\"string\",\"schedulingEntityRegisteredResourceMrid\":\"string\",\"siteAdminMrid\":\"489 981 029\",\"siteLocation\":\"Biscarosse\",\"siteIecCode\":\"S7X0000013077478\",\"systemOperatorEntityFlexibilityDomainMrid\":\"PSC4511\",\"systemOperatorEntityFlexibilityDomainName\":\"Départ 1\",\"systemOperatorCustomerServiceName\":\"DR Nantes Deux-Sèvres\"}');
-        //     } catch(err) {
-        //         console.info(err.message)
-        //         expect(err.message).to.equal('failed inserting key');
-        //     }
-        // });
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            try {
+                const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+
+                transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+                transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+
+                const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+                transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
+            } catch(err) {
+                console.info(err.message)
+                expect(err.message).to.equal('failed inserting key');
+            }
+        });
 
         it('should return ERROR on CreateActivationDocument NON-JSON Value', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'rte';
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
             try {
-                await star.CreateActivationDocument(transactionContext, 'RTE01EIC');
+                await star.CreateActivationDocument(transactionContext, 'XXXXXX');
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('ERROR createActivationDocument-> Input string NON-JSON value');
             }
         });
 
-        it('should return ERROR CreateActivationDocument missing originAutomataRegisteredResourceMrid', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
 
-            // `{
-            //     \"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\",
-            //     \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\",
-            //     \"registeredResourceMrid\": \"12345678901234\",
-            //     \"measurementUnitName\": \"KW\",
-            //     \"messageType\": \"string\",
-            //     \"businessType\": \"string\",
-            //     \"orderType\": \"string\",
-            //     \"orderEnd\": false,
-            // }`
+
+        it('should return ERROR CreateActivationDocument missing originAutomationRegisteredResourceMrid', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+
+            const ad_str = await Values.deleteJSONField(JSON.stringify(Values.HTA_ActivationDocument_Valid), 'originAutomationRegisteredResourceMrid');
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\", \"registeredResourceMrid\": \"12345678901234\", \"measurementUnitName\": \"KW\",\"messageType\": \"string\",\"businessType\": \"string\",\"orderType\": \"string\",\"orderEnd\": false}`);
+                await star.CreateActivationDocument(transactionContext, ad_str);
             } catch(err) {
                 // console.info(err.message)
-                expect(err.message).to.equal('originAutomataRegisteredResourceMrid is required');
+                expect(err.message).to.equal('originAutomationRegisteredResourceMrid is required');
             }
         });
 
         it('should return ERROR CreateActivationDocument missing registeredResourceMrid', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            var input = JSON.stringify(Values.HTA_ActivationDocument_Valid);
+            input = await Values.deleteJSONField(input, "registeredResourceMrid");
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\", \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"measurementUnitName\": \"KW\",\"messageType\": \"string\",\"businessType\": \"string\",\"orderType\": \"string\",\"orderEnd\": false}`);
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('registeredResourceMrid is required');
@@ -192,12 +131,13 @@ describe('Star Tests ActivationDocument', () => {
         });
 
         it('should return ERROR CreateActivationDocument missing measurementUnitName', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            var input = JSON.stringify(Values.HTA_ActivationDocument_Valid);
+            input = await Values.deleteJSONField(input, "measurementUnitName");
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\", \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"registeredResourceMrid\": \"12345678901234\", \"messageType\": \"string\",\"businessType\": \"string\",\"orderType\": \"string\",\"orderEnd\": false}`);
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('measurementUnitName is required');
@@ -205,12 +145,13 @@ describe('Star Tests ActivationDocument', () => {
         });
 
         it('should return ERROR CreateActivationDocument missing messageType', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            var input = JSON.stringify(Values.HTA_ActivationDocument_Valid);
+            input = await Values.deleteJSONField(input, "messageType");
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\", \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"registeredResourceMrid\": \"12345678901234\", \"measurementUnitName\": \"KW\", \"businessType\": \"string\",\"orderType\": \"string\",\"orderEnd\": false}`);
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('messageType is required');
@@ -218,38 +159,27 @@ describe('Star Tests ActivationDocument', () => {
         });
 
         it('should return ERROR CreateActivationDocument missing businessType', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            var input = JSON.stringify(Values.HTA_ActivationDocument_Valid);
+            input = await Values.deleteJSONField(input, "businessType");
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\", \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"registeredResourceMrid\": \"12345678901234\", \"measurementUnitName\": \"KW\", \"messageType\": \"string\", \"orderType\": \"string\",\"orderEnd\": false}`);
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('businessType is required');
             }
         });
 
-        it('should return ERROR CreateActivationDocument missing orderType', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-
-            try {
-                await star.CreateActivationDocument(transactionContext, `{\"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\", \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"registeredResourceMrid\": \"12345678901234\", \"measurementUnitName\": \"KW\", \"messageType\": \"string\", \"businessType\": \"string\", \"orderEnd\": false}`);
-            } catch(err) {
-                console.info(err.message)
-                expect(err.message).to.equal('orderType is required');
-            }
-        });
-
         it('should return ERROR CreateActivationDocument missing orderEnd', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            var input = JSON.stringify(Values.HTA_ActivationDocument_Valid);
+            input = await Values.deleteJSONField(input, "orderEnd");
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\", \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"registeredResourceMrid\": \"12345678901234\", \"measurementUnitName\": \"KW\", \"messageType\": \"string\", \"businessType\": \"string\", \"orderType\": \"string\"}`);
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('orderEnd is required');
@@ -257,272 +187,135 @@ describe('Star Tests ActivationDocument', () => {
         });
 
         it('should return ERROR CreateActivationDocument couple HTA wrong MSPID -> FakeMSP', async () => {
-            let star = new Star();
-            const order: ActivationDocument = {
-                activationDocumentMrid: 'string',
-                originAutomationRegisteredResourceMrid: 'string',
-                registeredResourceMrid: '12345678901234',
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd:  false
-            };
+            transactionContext.clientIdentity.getMSPID.returns(Values.FakeMSP);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
 
-            chaincodeStub.MspiID = 'FakeMSP';
-            // await star.CreateSystemOperator(transactionContext, '17V000000992746D', 'RTE', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
             try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
                 console.info(err.message)
-                expect(err.message).to.equal('Organisation, FakeMSP does not have write access for Activation Document');
+                expect(err.message).to.equal('Organisation, '
+                    .concat(Values.FakeMSP)
+                    .concat(' does not have write access for Activation Document'));
             }
         });
 
-        it('should return ERROR CreateActivationDocument couple HTA wrong unit measure', async () => {
-            let star = new Star();
-            const order: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: '12345678901234', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
+        /* no more test on unit measure 2022-06-02 */
+        // it('should return ERROR CreateActivationDocument couple HTA wrong unit measure', async () => {
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+        //     const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_Valid));
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            // await star.CreateSystemOperator(transactionContext, '17V000000992746D', 'RTE', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
-            try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
-            } catch(err) {
-                console.info(err.message)
-                expect(err.message).to.equal('Organisation, enedis does not have write access for MW orders');
-            }
-        });
+        //     try {
+        //         await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
+        //     } catch(err) {
+        //         console.info(err.message)
+        //         expect(err.message).to.equal('Organisation, enedis does not have write access for MW orders');
+        //     }
+        // });
 
         it('should return ERROR CreateActivationDocument couple HTA missing systemoperator', async () => {
-            let star = new Star();
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+            // transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
 
-            const order: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            // await star.CreateSystemOperator(transactionContext, '17V000000992746D', 'ENEDIS', 'A50');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
             try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
                 console.info(err.message)
-                expect(err.message).to.equal('System Operator : 17V000000992746D does not exist for Activation Document 8c56459a-794a-4ed1-a7f6-33b0064508f1 creation.');
+                expect(err.message).to.equal('ERROR createActivationDocument : System Operator : '
+                    .concat(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid)
+                    .concat(' does not exist for Activation Document ')
+                    .concat(activationDocument.activationDocumentMrid)
+                    .concat(' creation.'));
             }
         });
 
         it('should return ERROR CreateActivationDocument couple HTA missing producer', async () => {
-            let star = new Star();
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            // transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
 
-            const order: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745Y', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"ENEDIS\",\"marketParticipantRoleType\": \"A50\"}');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
             try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
                 // console.info(err.message)
-                expect(err.message).to.equal('Producer : 17X000001309745Y does not exist for Activation Document 8c56459a-794a-4ed1-a7f6-33b0064508f1 creation.');
+                expect(err.message).to.equal('Producer : '
+                    .concat(Values.HTA_Producer.producerMarketParticipantMrid)
+                    .concat(' does not exist for Activation Document ')
+                    .concat(activationDocument.activationDocumentMrid)
+                    .concat(' creation.'));
             }
-        });
-
-        it('should return ERROR CreateActivationDocument couple HTA missing yellow Page', async () => {
-            let star = new Star();
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const order: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745Y', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"ENEDIS\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745Y\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
-            } catch(err) {
-                // console.info(err.message)
-                expect(err.message).to.equal('Yellow Page : CRIVA1_ENEDIS_Y411 does not exist for Activation Document 8c56459a-794a-4ed1-a7f6-33b0064508f1 creation.');
-            }
-        });
-
-        it('should return SUCCESS CreateActivationDocument couple HTA', async () => {
-            let star = new Star();
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const order: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-            console.info('typeof=', new Date().toString());
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"ENEDIS\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
-
-            let ret = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(ret).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true}, order ));
         });
 
         it('should return ERROR CreateActivationDocument couple HTA missing to much optional fields', async () => {
-            let star = new Star();
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
 
-            const order: ActivationDocument = {
+            var input = JSON.stringify(activationDocument);
+            input = await Values.deleteJSONField(input, "orderValue");
+            input = await Values.deleteJSONField(input, "endCreatedDateTime");
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                // orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                // senderMarketParticipantMrid: '17V000000992746D', // FK?
-                // receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
             try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('Order must have a limitation value');
             }
+        });
+
+        it('should return SUCCESS CreateActivationDocument couple HTA', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+
+            // const iterator = Values.getYellowPageQueryMock(Values.HTA_yellowPage, mockHandler);
+            // const query = `{"selector": {"docType": "yellowPages", "originAutomationRegisteredResourceMrid": "${activationDocument.originAutomationRegisteredResourceMrid}"}}`;
+            // transactionContext.stub.getQueryResult.withArgs(query).resolves(iterator);
+
+            await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
+
+            const expected: ActivationDocument = activationDocument;
+            expected.orderEnd = true;
+            expected.potentialParent = false;
+            expected.potentialChild = true;
+            expected.docType = 'activationDocument';
+
+            // console.info("-----------")
+            // console.info(transactionContext.stub.putPrivateData.firstCall.args);
+            // console.info("ooooooooo")
+            // console.info(Buffer.from(transactionContext.stub.putPrivateData.firstCall.args[2].toString()).toString('utf8'));
+            // console.info(JSON.stringify(expected))
+            // console.info("-----------")
+
+
+            transactionContext.stub.putPrivateData.should.have.been.calledOnceWithExactly(
+                "enedis-producer",
+                expected.activationDocumentMrid,
+                Buffer.from(JSON.stringify(expected))
+            );
+
+            expect(transactionContext.stub.putPrivateData.callCount).to.equal(1);
         });
     });
 ////////////////////////////////////////////////////////////////////////////
@@ -530,10 +323,9 @@ describe('Star Tests ActivationDocument', () => {
 ////////////////////////////////////////////////////////////////////////////
     describe('Test CreateActivationDocument Début HTB RTE', () => {
         it('should return ERROR on CreateActivationDocument NON-JSON Value', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'rte';
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
             try {
-                await star.CreateActivationDocument(transactionContext, 'RTE01EIC');
+                await star.CreateActivationDocument(transactionContext, 'XXXXXX');
             } catch(err) {
                 // console.info(err.message)
                 expect(err.message).to.equal('ERROR createActivationDocument-> Input string NON-JSON value');
@@ -541,21 +333,29 @@ describe('Star Tests ActivationDocument', () => {
         });
 
         it('should return ERROR CreateActivationDocument wrong JSON', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'rte';
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+
+            var input = JSON.stringify(Values.HTB_ActivationDocument_JustStartDate);
+            input = await Values.deleteJSONField(input, "activationDocumentMrid");
+            input = await Values.deleteJSONField(input, "businessType");
+            input = await Values.deleteJSONField(input, "measurementUnitName");
+            input = await Values.deleteJSONField(input, "messageType");
+            input = await Values.deleteJSONField(input, "orderEnd");
+            input = await Values.deleteJSONField(input, "originAutomationRegisteredResourceMrid");
+            input = await Values.deleteJSONField(input, "registeredResourceMrid");
+
             const errors = [
                 'activationDocumentMrid is a compulsory string',
                 'businessType is required',
                 'measurementUnitName is required',
                 'messageType is required',
                 'orderEnd is required',
-                'orderType is required',
-                'originAutomataRegisteredResourceMrid is required',
+                'originAutomationRegisteredResourceMrid is required',
                 'registeredResourceMrid is required'
               ];
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"riginAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"egisteredResourceMrid\": \"12345678901234\", \"easurementUnitName\": \"KW\",\"essageType\": \"string\",\"usinessType\": \"string\",\"rderType\": \"string\",\"rderEnd\": false}`);
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 // console.info(err)
                 expect(err.errors[0]).to.equal(errors[0]);
@@ -566,27 +366,18 @@ describe('Star Tests ActivationDocument', () => {
                 expect(err.errors[5]).to.equal(errors[5]);
                 expect(err.errors[6]).to.equal(errors[6]);
                 expect(err.errors[7]).to.equal(errors[7]);
-                expect(err.message).to.equal('8 errors occurred');
+                expect(err.message).to.equal('7 errors occurred');
             }
         });
 
         it('should return ERROR CreateActivationDocument missing activationDocumentMrid', async () => {
-            let star = new Star();
-            chaincodeStub.MspiID = 'rte';
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
 
-            // `{
-            //     \"activationDocumentMrid\": \"8c56459a-794a-4ed1-a7f6-33b0064508f1\",
-            //     \"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\",
-            //     \"registeredResourceMrid\": \"12345678901234\",
-            //     \"measurementUnitName\": \"KW\",
-            //     \"messageType\": \"string\",
-            //     \"businessType\": \"string\",
-            //     \"orderType\": \"string\",
-            //     \"orderEnd\": false,
-            // }`
+            var input = JSON.stringify(Values.HTB_ActivationDocument_JustStartDate);
+            input = await Values.deleteJSONField(input, "activationDocumentMrid")
 
             try {
-                await star.CreateActivationDocument(transactionContext, `{\"originAutomataRegisteredResourceMrid\": \"CRIVA1_ENEDIS_Y411\", \"registeredResourceMrid\": \"12345678901234\", \"measurementUnitName\": \"KW\",\"messageType\": \"string\",\"businessType\": \"string\",\"orderType\": \"string\",\"orderEnd\": false}`);
+                await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
                 console.info(err.message)
                 expect(err.message).to.equal('activationDocumentMrid is a compulsory string');
@@ -594,182 +385,109 @@ describe('Star Tests ActivationDocument', () => {
         });
 
         it('should return ERROR CreateActivationDocument couple HTA wrong MSPID -> RTE', async () => {
-            let star = new Star();
-            const order: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
 
-            chaincodeStub.MspiID = 'rte';
-            // await star.CreateSystemOperator(transactionContext, '17V000000992746D', 'RTE', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
             try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
                 console.info(err.message)
-                expect(err.message).to.equal('Organisation, rte does not have write access for KW orders');
+                expect(err.message).to.equal(`Organisation, ${OrganizationTypeMsp.RTE} cannot send Activation Document for sender ${OrganizationTypeMsp.ENEDIS}`);
             }
         });
 
         it('should return ERROR CreateActivationDocument begin HTB site doesn\'t exist', async () => {
-            let star = new Star();
-            const order: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            transactionContext.stub.getState.withArgs(Values.HTB_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTB_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_Producer)));
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+            // const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            // const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            // transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTB_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_site_valid)));
 
-            chaincodeStub.MspiID = 'rte';
-            // await star.CreateSystemOperator(transactionContext, '17V000000992746D', 'RTE', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
             try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
                 console.info(err.message)
-                expect(err.message).to.equal('Site : PDL00000000289766 does not exist for Activation Document 8c56459a-794a-4ed1-a7f6-33b0064508f1 creation.');
+                expect(err.message).to.equal('Site : '
+                    .concat(Values.HTB_site_valid.meteringPointMrid)
+                    .concat(' does not exist for Activation Document ')
+                    .concat(activationDocument.activationDocumentMrid)
+                    .concat(' creation.'));
             }
         });
 
         it('should return ERROR CreateActivationDocument begin HTB producer doesn\'t exist', async () => {
-            let star = new Star();
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            transactionContext.stub.getState.withArgs(Values.HTB_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_systemoperator)));
+            // transactionContext.stub.getState.withArgs(Values.HTB_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_Producer)));
 
-            const site: Site = {
-                meteringPointMrid: 'PDL00000000289766',
-                systemOperatorMarketParticipantMrid: '17V0000009927454',
-                producerMarketParticipantMrid: '17X0000013097455',
-                technologyType: 'Eolien',
-                siteType: 'Injection',
-                siteName: 'Ferme éolienne de Genonville',
-                substationMrid: 'GDO A4RTD',
-                substationName: 'CIVRAY',
-                // marketEvaluationPointMrid: 'CodePPE', // optional
-                // schedulingEntityRegisteredResourceMrid: 'CodeEDP', // optional
-                siteAdminMrid: '489 981 029', // optional
-                siteLocation: 'Biscarosse', // optional
-                siteIecCode: 'S7X0000013077478', // optional
-                systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', // optional
-                systemOperatorEntityFlexibilityDomainName: 'Départ 1', // optional
-                systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres', // optional
-            }
+            // const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            // const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            // transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTB_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_site_valid)));
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X0000013097455\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const order: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
             try {
-                await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
                 console.info(err.message)
-                expect(err.message).to.equal('Producer : 17X000001309745X does not exist for Activation Document 8c56459a-794a-4ed1-a7f6-33b0064508f1 creation.');
+                expect(err.message).to.equal('Producer : '
+                    .concat(Values.HTB_Producer.producerMarketParticipantMrid)
+                    .concat(' does not exist for Activation Document ')
+                    .concat(activationDocument.activationDocumentMrid)
+                    .concat(' creation.'));
             }
         });
 
         it('should return SUCCESS CreateActivationDocument Begining order HTB RTE', async () => {
-            let star = new Star();
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            transactionContext.stub.getState.withArgs(Values.HTB_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTB_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_Producer)));
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTB_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_site_valid)));
 
-            const order: ActivationDocument = {
+            await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+            const expected: ActivationDocument = activationDocument;
+            expected.orderEnd = false;
+            expected.potentialParent = false;
+            expected.potentialChild = false;
+            expected.docType = 'activationDocument';
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+            // console.info("-----------")
+            // console.info(transactionContext.stub.putPrivateData.firstCall.args);
+            // console.info("ooooooooo")
+            // console.info(Buffer.from(transactionContext.stub.putPrivateData.firstCall.args[2].toString()).toString('utf8'));
+            // console.info(JSON.stringify(expected))
+            // console.info("-----------")
 
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
 
-            let ret = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(ret).to.eql( Object.assign({docType: 'activationDocument', reconciliation: false}, order ));
+            transactionContext.stub.putPrivateData.should.have.been.calledOnceWithExactly(
+                "producer-rte",
+                expected.activationDocumentMrid,
+                Buffer.from(JSON.stringify(expected))
+            );
+
+            expect(transactionContext.stub.putPrivateData.callCount).to.equal(1);
         });
 
     });
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////    GET     ////////////////////////////
-////////////////////////////////////////////////////////////////////////////
+// // ////////////////////////////////////////////////////////////////////////////
+// // ////////////////////////////////////    GET     ////////////////////////////
+// // ////////////////////////////////////////////////////////////////////////////
     describe('Test GetActivationDocumentByProducer', () => {
         it('should return OK on GetActivationDocumentByProducer empty', async () => {
-            let star = new Star();
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.PRODUCER);
             const producer = 'toto';
             let ret = await star.GetActivationDocumentByProducer(transactionContext, producer);
             ret = JSON.parse(ret);
@@ -779,226 +497,128 @@ describe('Star Tests ActivationDocument', () => {
         });
 
         it('should return SUCCESS on GetActivationDocumentByProducer', async () => {
-            let star = new Star();
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.PRODUCER);
+            const iterator1 = Values.getActivationDocumentQueryMock(Values.HTA_ActivationDocument_Valid, mockHandler);
+            const iterator2 = Values.getActivationDocumentQueryMock(Values.HTA_ActivationDocument_Valid_Doc2,mockHandler);
+            const query = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}", "receiverMarketParticipantMrid": "${Values.HTA_Producer.producerMarketParticipantMrid}"}}`;
+            transactionContext.stub.getPrivateDataQueryResult.withArgs("enedis-producer", query).resolves(iterator1);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs("producer-rte", query).resolves(iterator2);
 
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const orderA: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V0000009927454', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderA));
-
-            const orderB: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderB));
-
-            let ret = await star.GetActivationDocumentByProducer(transactionContext, orderA.receiverMarketParticipantMrid);
+            let ret = await star.GetActivationDocumentByProducer(transactionContext, Values.HTA_Producer.producerMarketParticipantMrid);
             ret = JSON.parse(ret);
             // console.log('ret=', ret)
             expect(ret.length).to.equal(2);
 
-            const expected: ActivationDocument[] = [
-                {
-                    activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f1",
-                    businessType: "string",
-                    docType: "activationDocument",
-                    endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                    measurementUnitName: "KW",
-                    messageType: "string",
-                    orderEnd: false,
-                    orderValue: "1",
-                    originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
-                    reasonCode: "string",
-                    receiverMarketParticipantMrid: "17X000001309745X",
-                    reconciliation: true,
-                    registeredResourceMrid: "PDL00000000289766",
-                    revisionNumber: "1",
-                    senderMarketParticipantMrid: "17V0000009927454",
-                    startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                },
-                {
-                    activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f2",
-                    businessType: "string",
-                    docType: "activationDocument",
-                    endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                    measurementUnitName: "MW",
-                    messageType: "string",
-                    orderEnd: false,
-                    
-                    orderValue: "1",
-                    originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
-                    reasonCode: "string",
-                    receiverMarketParticipantMrid: "17X000001309745X",
-                    reconciliation: false,
-                    registeredResourceMrid: "PDL00000000289766",
-                    revisionNumber: "1",
-                    senderMarketParticipantMrid: "17V000000992746D",
-                    startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                }
-           ];
+            const expected: ActivationDocument[] = [Values.HTA_ActivationDocument_Valid, Values.HTA_ActivationDocument_Valid_Doc2];
 
             expect(ret).to.eql(expected);
         });
 
-        it('should return SUCCESS on getActivationDocumentByproducer for non JSON value', async () => {
-            let star = new Star();
-            chaincodeStub.putState.onFirstCall().callsFake((key, value) => {
-                chaincodeStub.states = {};
-                chaincodeStub.states[key] = 'non-json-value';
-            });
+        // it('should return SUCCESS on getActivationDocumentByproducer for non JSON value', async () => {
+        //     transactionContext.stub.putState.onFirstCall().callsFake((key, value) => {
+        //         transactionContext.stub.states = {};
+        //         transactionContext.stub.states[key] = 'non-json-value';
+        //     });
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746F\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+        //     await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"17V000000992746F\",\"systemOperatorMarketParticipantName\": \"Enedis\",\"systemOperatorMarketParticipantRoleType\": \"A50\"}');
 
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
+        //     const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+        //     await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"17V000000992746D\",\"systemOperatorMarketParticipantName\": \"Enedis\",\"systemOperatorMarketParticipantRoleType\": \"A50\"}');
+        //     await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+        //     await star.CreateSite(transactionContext, JSON.stringify(site));
 
-            const orderA: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+        //     const orderA: ActivationDocument = {
+        //         activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
+        //         originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
+        //         registeredResourceMrid: 'PDL00000000289766', // FK2
+        //         measurementUnitName: 'KW',
+        //         messageType: 'string',
+        //         businessType: 'string',
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+        //         orderEnd: false,
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745Y\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+        //         orderValue: '1',
+        //         startCreatedDateTime: "2021-10-22T10:29:10.000Z",
+        //         // testDateTime: 'Date', // Test DELETE ME //////////////////////
+        //         endCreatedDateTime: "2021-10-22T23:29:10.000Z",
+        //         revisionNumber: '1',
+        //         reasonCode: 'string', // optionnal in case of TVC modulation
+        //         senderMarketParticipantMrid: '17V000000992746D', // FK?
+        //         receiverMarketParticipantMrid: '17X000001309745X', // FK?
+        //         // reconciliation: false,
+        //         // subOrderList: [],
+        //     }
 
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderA));
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+        //     await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"17V0000009927454\",\"systemOperatorMarketParticipantName\": \"Enedis\",\"systemOperatorMarketParticipantRoleType\": \"A50\"}');
+        //     await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"17X000001309745Y\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
 
-            const orderB: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
+        //     const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
+        //     await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
+        //     await star.CreateActivationDocument(transactionContext, JSON.stringify(orderA));
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745Y', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+        //     const orderB: ActivationDocument = {
+        //         activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
+        //         originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
+        //         registeredResourceMrid: 'PDL00000000289766', // FK2
+        //         measurementUnitName: 'MW',
+        //         messageType: 'string',
+        //         businessType: 'string',
+        //         orderEnd: false,
 
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderB));
+        //         orderValue: '1',
+        //         startCreatedDateTime: "2021-10-22T10:29:10.000Z",
+        //         // testDateTime: 'Date', // Test DELETE ME //////////////////////
+        //         endCreatedDateTime: "2021-10-22T23:29:10.000Z",
+        //         revisionNumber: '1',
+        //         reasonCode: 'string', // optionnal in case of TVC modulation
+        //         senderMarketParticipantMrid: '17V000000992746D', // FK?
+        //         receiverMarketParticipantMrid: '17X000001309745Y', // FK?
+        //         // reconciliation: false,
+        //         // subOrderList: [],
+        //     }
 
-            let retB = await star.GetActivationDocumentByProducer(transactionContext, orderB.receiverMarketParticipantMrid);
-            retB = JSON.parse(retB);
-            // console.log('retB=', retB)
-            expect(retB.length).to.equal(2);
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+        //     await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"17V000000992746D\",\"systemOperatorMarketParticipantName\": \"RTE\",\"systemOperatorMarketParticipantRoleType\": \"A49\"}');
+        //     await star.CreateActivationDocument(transactionContext, JSON.stringify(orderB));
 
-            const expected = [
-                'non-json-value',
-                {
-                    activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f2",
-                    businessType: "string",
-                    docType: "activationDocument",
-                    endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                    measurementUnitName: "MW",
-                    messageType: "string",
-                    orderEnd: false,
-                    
-                    orderValue: "1",
-                    originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
-                    reasonCode: "string",
-                    receiverMarketParticipantMrid: "17X000001309745Y",
-                    reconciliation: false,
-                    registeredResourceMrid: "PDL00000000289766",
-                    revisionNumber: "1",
-                    senderMarketParticipantMrid: "17V000000992746D",
-                    startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                }
-           ];
+        //     let retB = await star.GetActivationDocumentByProducer(transactionContext, orderB.receiverMarketParticipantMrid);
+        //     retB = JSON.parse(retB);
+        //     // console.log('retB=', retB)
+        //     expect(retB.length).to.equal(2);
 
-            expect(retB).to.eql(expected);
-        });
+        //     const expected = [
+        //         'non-json-value',
+        //         {
+        //             activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f2",
+        //             businessType: "string",
+        //             docType: "${DocType.ACTIVATION_DOCUMENT}",
+        //             endCreatedDateTime: "2021-10-22T23:29:10.000Z",
+        //             measurementUnitName: "MW",
+        //             messageType: "string",
+        //             orderEnd: false,
+
+        //             orderValue: "1",
+        //             originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
+        //             reasonCode: "string",
+        //             receiverMarketParticipantMrid: "17X000001309745Y",
+        //             reconciliation: true,
+        //             registeredResourceMrid: "PDL00000000289766",
+        //             revisionNumber: "1",
+        //             senderMarketParticipantMrid: "17V000000992746D",
+        //             startCreatedDateTime: "2021-10-22T10:29:10.000Z",
+        //         }
+        //    ];
+
+        //     expect(retB).to.eql(expected);
+        // });
    });
 
     describe('Test GetActivationDocumentBySystemOperator', () => {
         it('should return OK on GetActivationDocumentBySystemOperator empty', async () => {
-            let star = new Star();
             const producer = 'toto';
             let ret = await star.GetActivationDocumentBySystemOperator(transactionContext, producer);
             ret = JSON.parse(ret);
@@ -1007,771 +627,804 @@ describe('Star Tests ActivationDocument', () => {
             expect(ret).to.eql([]);
         });
 
+
+
         it('should return SUCCESS on GetActivationDocumentBySystemOperator', async () => {
-            let star = new Star();
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            const iterator = Values.getActivationDocumentQueryMock(Values.HTA_ActivationDocument_Valid,mockHandler);
+            const iterator2 = Values.getActivationDocumentQueryMock(Values.HTA_ActivationDocument_Valid_Doc2,mockHandler);
+            const query = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}", "senderMarketParticipantMrid": "${Values.HTA_ActivationDocument_Valid.senderMarketParticipantMrid}"}}`;
+            transactionContext.stub.getPrivateDataQueryResult.withArgs("enedis-producer", query).resolves(iterator);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs("producer-rte", query).resolves(iterator);
 
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const orderA: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V0000009927454', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderA));
-
-            const orderB: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderB));
-
-            let ret = await star.GetActivationDocumentBySystemOperator(transactionContext, orderA.senderMarketParticipantMrid);
+            let ret = await star.GetActivationDocumentBySystemOperator(transactionContext, Values.HTA_ActivationDocument_Valid.senderMarketParticipantMrid as string);
             ret = JSON.parse(ret);
             // console.log('ret=', ret)
             expect(ret.length).to.equal(1);
 
-            const expected: ActivationDocument[] = [
-                {
-                    activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f1",
-                    businessType: "string",
-                    docType: "activationDocument",
-                    endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                    measurementUnitName: "KW",
-                    messageType: "string",
-                    orderEnd: false,
-                    
-                    orderValue: "1",
-                    originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
-                    reasonCode: "string",
-                    receiverMarketParticipantMrid: "17X000001309745X",
-                    reconciliation: true,
-                    registeredResourceMrid: "PDL00000000289766",
-                    revisionNumber: "1",
-                    senderMarketParticipantMrid: "17V0000009927454",
-                    startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                }
-            ];
+            const expected: ActivationDocument[] = [Values.HTA_ActivationDocument_Valid];
 
             expect(ret).to.eql(expected);
         });
 
-        it('should return SUCCESS on getActivationDocumentBySystemOperator for non JSON value', async () => {
-            let star = new Star();
-            chaincodeStub.putState.onFirstCall().callsFake((key, value) => {
-                chaincodeStub.states = {};
-                chaincodeStub.states[key] = 'non-json-value';
-            });
+        // it('should return SUCCESS on getActivationDocumentBySystemOperator for non JSON value', async () => {
+        //     transactionContext.stub.putState.onFirstCall().callsFake((key, value) => {
+        //         transactionContext.stub.states = {};
+        //         transactionContext.stub.states[key] = 'non-json-value';
+        //     });
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746L\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+        //     await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"17V000000992746L\",\"systemOperatorMarketParticipantName\": \"Enedis\",\"systemOperatorMarketParticipantRoleType\": \"A50\"}');
 
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
+        //     const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+        //     await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"17V0000009927454\",\"systemOperatorMarketParticipantName\": \"Enedis\",\"systemOperatorMarketParticipantRoleType\": \"A50\"}');
+        //     await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+        //     await star.CreateSite(transactionContext, JSON.stringify(site));
 
-            const orderA: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+        //     const orderA: ActivationDocument = {
+        //         activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
+        //         originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
+        //         registeredResourceMrid: 'PDL00000000289766', // FK2
+        //         measurementUnitName: 'MW',
+        //         messageType: 'string',
+        //         businessType: 'string',
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V0000009927454', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+        //         orderEnd: false,
 
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745Y\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
+        //         orderValue: '1',
+        //         startCreatedDateTime: "2021-10-22T10:29:10.000Z",
+        //         // testDateTime: 'Date', // Test DELETE ME //////////////////////
+        //         endCreatedDateTime: "2021-10-22T23:29:10.000Z",
+        //         revisionNumber: '1',
+        //         reasonCode: 'string', // optionnal in case of TVC modulation
+        //         senderMarketParticipantMrid: '17V0000009927454', // FK?
+        //         receiverMarketParticipantMrid: '17X000001309745X', // FK?
+        //         // reconciliation: false,
+        //         // subOrderList: [],
+        //     }
 
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderA));
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+        //     await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrid\": \"17V000000992746D\",\"systemOperatorMarketParticipantName\": \"RTE\",\"systemOperatorMarketParticipantRoleType\": \"A49\"}');
+        //     await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrid\": \"17X000001309745Y\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
 
-            const orderB: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+        //     const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
+        //     await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
+        //     await star.CreateActivationDocument(transactionContext, JSON.stringify(orderA));
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V0000009927454', // FK?
-                receiverMarketParticipantMrid: '17X000001309745Y', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+        //     const orderB: ActivationDocument = {
+        //         activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
+        //         originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
+        //         registeredResourceMrid: 'PDL00000000289766', // FK2
+        //         measurementUnitName: 'MW',
+        //         messageType: 'string',
+        //         businessType: 'string',
 
-            chaincodeStub.MspiID = 'rte';
-            // await star.CreateSystemOperator(transactionContext, '17V0000009927454', 'RTE', 'A49');
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderB));
+        //         orderEnd: false,
 
-            let retB = await star.GetActivationDocumentBySystemOperator(transactionContext, orderB.senderMarketParticipantMrid);
-            retB = JSON.parse(retB);
-            // console.log('retB=', retB)
-            expect(retB.length).to.equal(3);
+        //         orderValue: '1',
+        //         startCreatedDateTime: "2021-10-22T10:29:10.000Z",
+        //         // testDateTime: 'Date', // Test DELETE ME //////////////////////
+        //         endCreatedDateTime: "2021-10-22T23:29:10.000Z",
+        //         revisionNumber: '1',
+        //         reasonCode: 'string', // optionnal in case of TVC modulation
+        //         senderMarketParticipantMrid: '17V0000009927454', // FK?
+        //         receiverMarketParticipantMrid: '17X000001309745Y', // FK?
+        //         // reconciliation: false,
+        //         // subOrderList: [],
+        //     }
 
-            const expected = [
-                'non-json-value',
-                {
-                    activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f1",
-                    businessType: "string",
-                    docType: "activationDocument",
-                    endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                    measurementUnitName: "MW",
-                    messageType: "string",
-                    orderEnd: false,
-                    
-                    orderValue: "1",
-                    originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
-                    reasonCode: "string",
-                    receiverMarketParticipantMrid: "17X000001309745X",
-                    reconciliation: false,
-                    registeredResourceMrid: "PDL00000000289766",
-                    revisionNumber: "1",
-                    senderMarketParticipantMrid: "17V0000009927454",
-                    startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                },
-                {
+        //     transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+        //     // await star.CreateSystemOperator(transactionContext, '17V0000009927454', 'RTE', 'A49');
+        //     await star.CreateActivationDocument(transactionContext, JSON.stringify(orderB));
 
-                    activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f2",
-                    businessType: "string",
-                    docType: "activationDocument",
-                    endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                    measurementUnitName: "MW",
-                    messageType: "string",
-                    orderEnd: false,
-                    
-                    orderValue: "1",
-                    originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
-                    reasonCode: "string",
-                    receiverMarketParticipantMrid: "17X000001309745Y",
-                    reconciliation: false,
-                    registeredResourceMrid: "PDL00000000289766",
-                    revisionNumber: "1",
-                    senderMarketParticipantMrid: "17V0000009927454",
-                    startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                }
-           ];
+        //     let retB = await star.GetActivationDocumentBySystemOperator(transactionContext, orderB.senderMarketParticipantMrid);
+        //     retB = JSON.parse(retB);
+        //     // console.log('retB=', retB)
+        //     expect(retB.length).to.equal(3);
 
-            expect(retB).to.eql(expected);
-        });
+        //     const expected = [
+        //         'non-json-value',
+        //         {
+        //             activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f1",
+        //             businessType: "string",
+        //             docType: "${DocType.ACTIVATION_DOCUMENT}",
+        //             endCreatedDateTime: "2021-10-22T23:29:10.000Z",
+        //             measurementUnitName: "MW",
+        //             messageType: "string",
+        //             orderEnd: false,
+
+        //             orderValue: "1",
+        //             originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
+        //             reasonCode: "string",
+        //             receiverMarketParticipantMrid: "17X000001309745X",
+        //             reconciliation: true,
+        //             registeredResourceMrid: "PDL00000000289766",
+        //             revisionNumber: "1",
+        //             senderMarketParticipantMrid: "17V0000009927454",
+        //             startCreatedDateTime: "2021-10-22T10:29:10.000Z",
+        //         },
+        //         {
+
+        //             activationDocumentMrid: "8c56459a-794a-4ed1-a7f6-33b0064508f2",
+        //             businessType: "string",
+        //             docType: "${DocType.ACTIVATION_DOCUMENT}",
+        //             endCreatedDateTime: "2021-10-22T23:29:10.000Z",
+        //             measurementUnitName: "MW",
+        //             messageType: "string",
+        //             orderEnd: false,
+
+        //             orderValue: "1",
+        //             originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",
+        //             reasonCode: "string",
+        //             receiverMarketParticipantMrid: "17X000001309745Y",
+        //             reconciliation: true,
+        //             registeredResourceMrid: "PDL00000000289766",
+        //             revisionNumber: "1",
+        //             senderMarketParticipantMrid: "17V0000009927454",
+        //             startCreatedDateTime: "2021-10-22T10:29:10.000Z",
+        //         }
+        //    ];
+
+        //     expect(retB).to.eql(expected);
+        // });
     });
 ////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////    BB/BE     ////////////////////////////
+/////////////////////////    RECONCILIATION STATE     //////////////////////
 ////////////////////////////////////////////////////////////////////////////
-    describe('Test OrderEnd RTE', () => {
-        it('should return SUCCESS CreateActivationDocument end order HTB RTE for NON-JSON value', async () => {
-            let star = new Star();
+    describe('Test Reconciliation State', () => {
+        it('should return SUCCESS on getReconciliationState / Garbage : 2 old', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
 
-            chaincodeStub.putState.onFirstCall().callsFake((key, value) => {
-                chaincodeStub.states = {};
-                chaincodeStub.states[key] = 'non-json-value';
-            });
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsTSO: string[] = collectionMap.get(RoleType.Role_TSO) as string[];
+            const collectionTSO: string = collectionsTSO[0];
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
+            const ppcott:number = params.values.get(ParametersType.PPCO_TIME_THRESHOLD);
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"1\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            // await star.CreateSystemOperator(transactionContext, '17V000000992746D', 'RTE', 'A49');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-            chaincodeStub.MspiID = 'rte';
+            const activationDocument01_garbage: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_HTA_JustStartDate));
+            activationDocument01_garbage.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument01_garbage.startCreatedDateTime = Values.reduceDateTimeStr(activationDocument01_garbage.startCreatedDateTime as string, ppcott+1);
+            activationDocument01_garbage.potentialParent= true;
+            activationDocument01_garbage.potentialChild= false;
 
-            // await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+            const activationDocument02_garbage: ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid_Doc2));
+            activationDocument02_garbage.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument02_garbage.startCreatedDateTime = Values.reduceDateTimeStr(activationDocument02_garbage.startCreatedDateTime as string, ppcott+1);
+            activationDocument02_garbage.endCreatedDateTime = Values.reduceDateTimeStr(activationDocument02_garbage.endCreatedDateTime as string, ppcott+1);
+            activationDocument02_garbage.potentialParent= false;
+            activationDocument02_garbage.potentialChild= true;
 
-            const orderEnd: ActivationDocument = {
+            const queryCrank = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}","$or":[{"potentialParent": true},{"potentialChild": true}]}}`;
+            const iteratorMix = Values.getActivationDocumentQueryMock(activationDocument01_garbage,mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionTSO, queryCrank).resolves(iteratorMix);
+            const iteratorProd = Values.getActivationDocumentQueryMock(activationDocument02_garbage,mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, queryCrank).resolves(iteratorProd);
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: true,
+            let ret = await star.GetActivationDocumentReconciliationState(transactionContext);
+            ret = JSON.parse(ret);
+            // console.log('ret=', ret)
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                subOrderList: [''],
-            }
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderEnd));
+            activationDocument01_garbage.orderEnd = true;
+            activationDocument01_garbage.potentialParent = false;
+            activationDocument02_garbage.orderEnd = true;
+            activationDocument02_garbage.potentialChild = false;
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionTSO, data: activationDocument01_garbage});
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: activationDocument02_garbage});
 
+            const expected = JSON.parse(JSON.stringify(updateOrders));
+            // console.log('expected=', expected)
 
-            // let ret = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            // expect(ret).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f2']}, order ));
-            let retEnd = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f2")).toString());
-            expect(retEnd).to.eql( Object.assign({docType: 'activationDocument', reconciliation: false}, orderEnd ));
+            expect(ret).to.eql(expected);
         });
 
-        it('should return SUCCESS CreateActivationDocument end order HTB RTE', async () => {
-            let star = new Star();
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
+        it('should return SUCCESS on getReconciliationState / Garbage : 2 old - 1 current', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsTSO: string[] = collectionMap.get(RoleType.Role_TSO) as string[];
+            const collectionTSO: string = collectionsTSO[0];
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
+            const ppcott:number = params.values.get(ParametersType.PPCO_TIME_THRESHOLD);
 
-            const order: ActivationDocument = {
+            const activationDocument_valid: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_HTA_JustStartDate));
+            activationDocument_valid.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument_valid.potentialParent= true;
+            activationDocument_valid.potentialChild= false;
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+            const activationDocument01_garbage: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_HTA_JustStartDate));
+            activationDocument01_garbage.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument01_garbage.startCreatedDateTime = Values.reduceDateTimeStr(activationDocument01_garbage.startCreatedDateTime as string, ppcott+1);
+            activationDocument01_garbage.potentialParent= true;
+            activationDocument01_garbage.potentialChild= false;
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
+            const activationDocument02_garbage: ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid_Doc2));
+            activationDocument02_garbage.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument02_garbage.startCreatedDateTime = Values.reduceDateTimeStr(activationDocument02_garbage.startCreatedDateTime as string, ppcott+1);
+            activationDocument02_garbage.endCreatedDateTime = Values.reduceDateTimeStr(activationDocument02_garbage.endCreatedDateTime as string, ppcott+1);
+            activationDocument02_garbage.potentialParent= false;
+            activationDocument02_garbage.potentialChild= true;
 
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+            const queryCrank = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}","$or":[{"potentialParent": true},{"potentialChild": true}]}}`;
+            const iteratorMix = Values.getActivationDocumentQueryMock2Values(activationDocument_valid, activationDocument01_garbage,mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionTSO, queryCrank).resolves(iteratorMix);
+            const iteratorProd = Values.getActivationDocumentQueryMock(activationDocument02_garbage,mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, queryCrank).resolves(iteratorProd);
 
-            const orderEnd: ActivationDocument = {
+            let ret = await star.GetActivationDocumentReconciliationState(transactionContext);
+            ret = JSON.parse(ret);
+            // console.log('ret=', ret)
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: true,
+            activationDocument01_garbage.orderEnd = true;
+            activationDocument01_garbage.potentialParent = false;
+            activationDocument02_garbage.orderEnd = true;
+            activationDocument02_garbage.potentialChild = false;
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionTSO, data: activationDocument01_garbage});
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: activationDocument02_garbage});
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderEnd));
+            const expected = JSON.parse(JSON.stringify(updateOrders));
+            // console.log('expected=', expected)
 
-
-            let ret = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(ret).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f2']}, order ));
-            let retEnd = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f2")).toString());
-            expect(retEnd).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f1']}, orderEnd ));
+            expect(ret).to.eql(expected);
         });
 
-        it('should return SUCCESS CreateActivationDocument end order HTB RTE for coverage', async () => {
-            let star = new Star();
 
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V0000009927454',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V0000009927454\",\"marketParticipantName\": \"Enedis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateSite(transactionContext, JSON.stringify(site));
+        it('should return SUCCESS on getReconciliationState / Matching end order HTB RTE', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
 
-            const order: ActivationDocument = {
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                subOrderList: [],
-            }
+            transactionContext.stub.getState.withArgs(Values.HTB_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTB_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_Producer)));
 
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(order));
+            const collectionNamesSite: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNamesSite[0], Values.HTB_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_site_valid)));
 
-            const orderEnd: ActivationDocument = {
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: true,
+            const parentStartDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            parentStartDocument.potentialParent = true;
+            parentStartDocument.potentialChild = false;
+            parentStartDocument.docType = DocType.ACTIVATION_DOCUMENT;
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                subOrderList: [],
-            }
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderEnd));
+            const childEndDocument: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustEndDate));
+            childEndDocument.potentialParent = false;
+            childEndDocument.potentialChild = true;
+            childEndDocument.docType=DocType.ACTIVATION_DOCUMENT;
 
-            order.subOrderList = ['8c56459a-794a-4ed1-a7f6-33b0064508f2'];
-            orderEnd.subOrderList = ['8c56459a-794a-4ed1-a7f6-33b0064508f1'];
-            let ret = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(ret).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true}, order ));
-            let retEnd = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f2")).toString());
-            expect(retEnd).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f1']}, orderEnd ));
+            const senderMarketParticipantMrid: string = childEndDocument.senderMarketParticipantMrid as string;
+            const registeredResourceMrid: string = childEndDocument.registeredResourceMrid;
+
+            const queryDate: string = childEndDocument.endCreatedDateTime as string;
+
+            const pcuetmt:number = params.values.get(ParametersType.PC_TIME_UPDATEEND_MATCH_THRESHOLD);
+
+            const datetmp = new Date(queryDate);
+            datetmp.setUTCHours(0,0,0,0);
+            const dateYesterday = new Date(datetmp.getTime() - pcuetmt);
+
+            var args: string[] = [];
+            args.push(`"orderEnd":false`);
+            args.push(`"senderMarketParticipantMrid":"${senderMarketParticipantMrid}"`);
+            args.push(`"registeredResourceMrid":"${registeredResourceMrid}"`);
+            args.push(`"messageType":{"$in":["A54","A98"]}`);
+            args.push(`"startCreatedDateTime":{"$gte":${JSON.stringify(dateYesterday)},"$lte":${JSON.stringify(queryDate)}}`);
+
+            const query = await QueryStateService.buildQuery(DocType.ACTIVATION_DOCUMENT, args);
+
+            const iterator = Values.getActivationDocumentQueryMock(parentStartDocument, mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, query).resolves(iterator);
+
+            const queryCrank = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}","$or":[{"potentialParent": true},{"potentialChild": true}]}}`;
+            const iteratorReconciliation = Values.getActivationDocumentQueryMock2Values(parentStartDocument, childEndDocument, mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, queryCrank).resolves(iteratorReconciliation);
+
+            let ret = await star.GetActivationDocumentReconciliationState(transactionContext);
+            ret = JSON.parse(ret);
+            // console.log('ret=', ret)
+
+
+            parentStartDocument.orderEnd = true;
+            parentStartDocument.subOrderList = [childEndDocument.activationDocumentMrid];
+
+            childEndDocument.potentialChild = false;
+            childEndDocument.subOrderList = [parentStartDocument.activationDocumentMrid];
+            childEndDocument.docType=DocType.ACTIVATION_DOCUMENT;
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: parentStartDocument});
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: childEndDocument});
+
+            const expected = JSON.parse(JSON.stringify(updateOrders));
+            // console.log('expected=', expected)
+
+            expect(ret).to.eql(expected);
         });
+
+
+
+        it('should return SUCCESS on getReconciliationState / Matching end order HTB RTE (2 parents, choice on closest date )', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.RTE);
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
+
+
+            transactionContext.stub.getState.withArgs(Values.HTB_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTB_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_Producer)));
+
+            const collectionNamesSite: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNamesSite[0], Values.HTB_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTB_site_valid)));
+
+
+            const parentStartDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            parentStartDocument.potentialParent = true;
+            parentStartDocument.potentialChild = false;
+            parentStartDocument.docType = DocType.ACTIVATION_DOCUMENT;
+
+            const parentStartDocumentOldest: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            parentStartDocumentOldest.activationDocumentMrid = parentStartDocumentOldest.activationDocumentMrid + "_Old";
+            parentStartDocumentOldest.potentialParent= true;
+            parentStartDocumentOldest.potentialChild= false;
+            parentStartDocumentOldest.docType=DocType.ACTIVATION_DOCUMENT;
+            var dateoldest = new Date(parentStartDocumentOldest.startCreatedDateTime as string);
+            dateoldest = new Date(dateoldest.getTime() - 2);
+            parentStartDocumentOldest.startCreatedDateTime = JSON.stringify(dateoldest);
+
+
+            const childEndDocument: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustEndDate));
+            childEndDocument.potentialParent = false;
+            childEndDocument.potentialChild = true;
+            childEndDocument.docType=DocType.ACTIVATION_DOCUMENT;
+
+            const senderMarketParticipantMrid: string = childEndDocument.senderMarketParticipantMrid as string;
+            const registeredResourceMrid: string = childEndDocument.registeredResourceMrid;
+
+            const queryDate: string = childEndDocument.endCreatedDateTime as string;
+
+            const pcuetmt:number = params.values.get(ParametersType.PC_TIME_UPDATEEND_MATCH_THRESHOLD);
+
+            const datetmp = new Date(queryDate);
+            datetmp.setUTCHours(0,0,0,0);
+            const dateYesterday = new Date(datetmp.getTime() - pcuetmt);
+
+            var args: string[] = [];
+            args.push(`"orderEnd":false`);
+            args.push(`"senderMarketParticipantMrid":"${senderMarketParticipantMrid}"`);
+            args.push(`"registeredResourceMrid":"${registeredResourceMrid}"`);
+            args.push(`"messageType":{"$in":["A54","A98"]}`);
+            args.push(`"startCreatedDateTime":{"$gte":${JSON.stringify(dateYesterday)},"$lte":${JSON.stringify(queryDate)}}`);
+
+            // console.info("** Query TEST **");
+            const query = await QueryStateService.buildQuery(DocType.ACTIVATION_DOCUMENT, args);
+            // console.info("** Query TEST - END **");
+
+            const iterator = Values.getActivationDocumentQueryMock2Values(parentStartDocumentOldest, parentStartDocument, mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, query).resolves(iterator);
+
+            const queryCrank = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}","$or":[{"potentialParent": true},{"potentialChild": true}]}}`;
+            const iteratorReconciliation = Values.getActivationDocumentQueryMock2Values(parentStartDocument, childEndDocument, mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, queryCrank).resolves(iteratorReconciliation);
+
+            let ret = await star.GetActivationDocumentReconciliationState(transactionContext);
+            ret = JSON.parse(ret);
+            // console.log('ret=', ret)
+
+
+            parentStartDocument.orderEnd = true;
+            parentStartDocument.subOrderList = [childEndDocument.activationDocumentMrid];
+
+            childEndDocument.potentialChild = false;
+            childEndDocument.subOrderList = [parentStartDocument.activationDocumentMrid];
+            childEndDocument.docType=DocType.ACTIVATION_DOCUMENT;
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: parentStartDocument});
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: childEndDocument});
+
+            const expected = JSON.parse(JSON.stringify(updateOrders));
+            // console.log('expected=', expected)
+
+            expect(ret).to.eql(expected);
+        });
+
+
+
+        it('should return SUCCESS CreateActivationDocument couple HTA after HTB with MPWC reconciliation', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsTSO: string[] = collectionMap.get(RoleType.Role_TSO) as string[];
+            const collectionTSO: string = collectionsTSO[0];
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
+
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator2.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator2)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+
+            const parentDocument: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_HTA_JustStartDate));
+            parentDocument.docType=DocType.ACTIVATION_DOCUMENT;
+            parentDocument.potentialParent= true;
+            parentDocument.potentialChild= false;
+            parentDocument.orderEnd = true;
+
+            const childDocument_Reconciliation: ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid_Doc2));
+            childDocument_Reconciliation.docType=DocType.ACTIVATION_DOCUMENT;
+            childDocument_Reconciliation.potentialParent= false;
+            childDocument_Reconciliation.potentialChild= true;
+            childDocument_Reconciliation.orderEnd = false;
+
+            const collectionNamesSite: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNamesSite[0],
+                childDocument_Reconciliation.registeredResourceMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+
+
+            const orderType = childDocument_Reconciliation.businessType;
+
+            const pctmt:number = params.values.get(ParametersType.PC_TIME_MATCH_THRESHOLD);
+
+            const queryDate: string = JSON.parse(JSON.stringify(childDocument_Reconciliation.startCreatedDateTime));
+            const datetmp = new Date(queryDate);
+            datetmp.setUTCSeconds(0,0);
+            const dateMinusPCTMT = new Date(datetmp.getTime() - pctmt);
+            const datePlusPCTMT = new Date(datetmp.getTime() - pctmt);
+
+            const registeredResourceMridList_str = JSON.stringify([Values.HTA_yellowPage.registeredResourceMrid]);
+            var args: string[] = [];
+            args.push(`"potentialParent":true`);
+            args.push(`"registeredResourceMrid":{"$in":${registeredResourceMridList_str}}`);
+            args.push(`"businessType":"${orderType}"`);
+            const date_criteria: string = `"$or":[`
+            .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(queryDate)},"$lte":${JSON.stringify(datePlusPCTMT)}}},`)
+            .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(dateMinusPCTMT)},"$lte":${JSON.stringify(queryDate)}}}`)
+            .concat(`]`);
+            args.push(date_criteria);
+
+            const query = await QueryStateService.buildQuery(DocType.ACTIVATION_DOCUMENT, args);
+
+            const iterator = Values.getActivationDocumentQueryMock(parentDocument,mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionTSO, query).resolves(iterator);
+
+            const queryYellowPage = `{"selector": {"docType": "yellowPages", "originAutomationRegisteredResourceMrid": "${childDocument_Reconciliation.originAutomationRegisteredResourceMrid}"}}`;
+            const iteratorYellowPage = Values.getYellowPageQueryMock(Values.HTA_yellowPage,mockHandler);
+            transactionContext.stub.getQueryResult.withArgs(queryYellowPage).resolves(iteratorYellowPage);
+
+            const queryCrank = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}","$or":[{"potentialParent": true},{"potentialChild": true}]}}`;
+            const iteratorReconciliation = Values.getActivationDocumentQueryMock2Values(parentDocument, childDocument_Reconciliation, mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, queryCrank).resolves(iteratorReconciliation);
+
+            let ret = await star.GetActivationDocumentReconciliationState(transactionContext);
+            ret = JSON.parse(ret);
+            // console.log('ret=', ret)
+
+
+            parentDocument.orderEnd = true;
+            parentDocument.subOrderList = [childDocument_Reconciliation.activationDocumentMrid];
+
+            childDocument_Reconciliation.potentialChild = false;
+            childDocument_Reconciliation.subOrderList = [parentDocument.activationDocumentMrid];
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionTSO, data: parentDocument});
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: childDocument_Reconciliation});
+
+            const expected = JSON.parse(JSON.stringify(updateOrders));
+            // console.log('expected=', expected)
+
+            expect(ret).to.eql(expected);
+        });
+
+
+
+        it('should return SUCCESS CreateActivationDocument couple HTA after HTB (2 parents, choice on closest date ) with MPWC reconciliation', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsTSO: string[] = collectionMap.get(RoleType.Role_TSO) as string[];
+            const collectionTSO: string = collectionsTSO[0];
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
+
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator2.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator2)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+
+            const parentDocumentOldest: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_HTA_JustStartDate));
+            parentDocumentOldest.docType=DocType.ACTIVATION_DOCUMENT;
+            parentDocumentOldest.potentialParent= true;
+            parentDocumentOldest.potentialChild= false;
+            parentDocumentOldest.orderEnd = true;
+            var dateoldest = new Date(parentDocumentOldest.startCreatedDateTime as string);
+            dateoldest = new Date(dateoldest.getTime() - 2);
+            parentDocumentOldest.startCreatedDateTime = JSON.stringify(dateoldest);
+
+            const parentDocument: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_HTA_JustStartDate));
+            parentDocument.docType=DocType.ACTIVATION_DOCUMENT;
+            parentDocument.potentialParent= true;
+            parentDocument.potentialChild= false;
+            parentDocument.orderEnd = true;
+
+            const childDocument_Reconciliation: ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid_Doc2));
+            childDocument_Reconciliation.docType=DocType.ACTIVATION_DOCUMENT;
+            childDocument_Reconciliation.potentialParent= false;
+            childDocument_Reconciliation.potentialChild= true;
+            childDocument_Reconciliation.orderEnd = false;
+
+            const collectionNamesSite: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNamesSite[0],
+                childDocument_Reconciliation.registeredResourceMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+
+
+            const orderType = childDocument_Reconciliation.businessType;
+
+            const pctmt:number = params.values.get(ParametersType.PC_TIME_MATCH_THRESHOLD);
+
+            const queryDate: string = childDocument_Reconciliation.startCreatedDateTime as string;
+            const datetmp = new Date(queryDate);
+            datetmp.setUTCMilliseconds(0);
+            datetmp.setUTCSeconds(0);
+            const dateMinusPCTMT = new Date(datetmp.getTime() - pctmt);
+            const datePlusPCTMT = new Date(datetmp.getTime() - pctmt);
+
+            const registeredResourceMridList_str = JSON.stringify([Values.HTA_yellowPage.registeredResourceMrid]);
+            var args: string[] = [];
+            args.push(`"potentialParent":true`);
+            args.push(`"registeredResourceMrid":{"$in":${registeredResourceMridList_str}}`);
+            args.push(`"businessType":"${orderType}"`);
+            const date_criteria: string = `"$or":[`
+            .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(queryDate)},"$lte":${JSON.stringify(datePlusPCTMT)}}},`)
+            .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(dateMinusPCTMT)},"$lte":${JSON.stringify(queryDate)}}}`)
+            .concat(`]`);
+            args.push(date_criteria);
+
+            const query = await QueryStateService.buildQuery(DocType.ACTIVATION_DOCUMENT, args);
+
+            const iterator = Values.getActivationDocumentQueryMock2Values(parentDocumentOldest, parentDocument,mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionTSO, query).resolves(iterator);
+
+            const queryYellowPage = `{"selector": {"docType": "yellowPages", "originAutomationRegisteredResourceMrid": "${childDocument_Reconciliation.originAutomationRegisteredResourceMrid}"}}`;
+            const iteratorYellowPage = Values.getYellowPageQueryMock(Values.HTA_yellowPage,mockHandler);
+            transactionContext.stub.getQueryResult.withArgs(queryYellowPage).resolves(iteratorYellowPage);
+
+            const queryCrank = `{"selector": {"docType": "${DocType.ACTIVATION_DOCUMENT}","$or":[{"potentialParent": true},{"potentialChild": true}]}}`;
+            const iteratorReconciliation = Values.getActivationDocumentQueryMock2Values(parentDocument, childDocument_Reconciliation, mockHandler);
+            transactionContext.stub.getPrivateDataQueryResult.withArgs(collectionProducer, queryCrank).resolves(iteratorReconciliation);
+
+            let ret = await star.GetActivationDocumentReconciliationState(transactionContext);
+            ret = JSON.parse(ret);
+            // console.log('ret=', ret)
+
+
+            parentDocument.orderEnd = true;
+            parentDocument.subOrderList = [childDocument_Reconciliation.activationDocumentMrid];
+
+            childDocument_Reconciliation.potentialChild = false;
+            childDocument_Reconciliation.subOrderList = [parentDocument.activationDocumentMrid];
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionTSO, data: parentDocument});
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: childDocument_Reconciliation});
+
+            const expected = JSON.parse(JSON.stringify(updateOrders));
+            // console.log('expected=', expected)
+
+            expect(ret).to.eql(expected);
+        });
+
+
     });
-    describe('Test BB/BE reconciliations', () => {
+////////////////////////////////////////////////////////////////////////////
+/////////////////////////    UPDATE BY ORDERS     //////////////////////////
+////////////////////////////////////////////////////////////////////////////
+    describe('Test Update Activation Document by Orders', () => {
+        it('should return ERROR UpdateActivationDocumentByOrders on unknown collection', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
 
-        it('should return SUCCESS CreateActivationDocument couple HTA with BB reconciliation', async () => {
-            let star = new Star();
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746Y\",\"marketParticipantName\": \"ENEDis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X0000013097454\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',marketEvaluationPointMrid: 'string',schedulingEntityRegisteredResourceMrid:'string',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
+            const activationDocument_Producer: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            activationDocument_Producer.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument_Producer.potentialParent= true;
+            activationDocument_Producer.potentialChild= false;
 
-            const orderBegin: ActivationDocument = {
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'PDL00000000289766', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
+            transactionContext.stub.getPrivateData.withArgs(collectionProducer,
+                activationDocument_Producer.activationDocumentMrid).resolves(Buffer.from(JSON.stringify(activationDocument_Producer)));
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17V000000992746Y', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
+            activationDocument_Producer.potentialParent= false;
+            activationDocument_Producer.orderEnd = true;
+            activationDocument_Producer.subOrderList = ["AAA", "BBB"];
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: "XXX", data: activationDocument_Producer});
+            const updateOrders_str = JSON.stringify(updateOrders);
+
+            try {
+                await star.UpdateActivationDocumentByOrders(transactionContext, updateOrders_str);
+            } catch(err) {
+                // console.info(err.message)
+                expect(err.message).to.equal(`ActivationDocument : ${activationDocument_Producer.activationDocumentMrid} does not exist`);
             }
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderBegin));
-
-            // chaincodeStub.MspiID = 'enedis';
-            // await star.CreateSystemOperator(transactionContext, '17V0000009927454', 'Enedis', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
-            // await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const orderCouple: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderCouple));
-
-            let retBegin = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(retBegin).to.eql( Object.assign({docType: 'activationDocument', reconciliation: false, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f2']}, orderBegin ));
-            let retCouple = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f2")).toString());
-            expect(retCouple).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f1']}, orderCouple ));
         });
 
-        it('should return SUCCESS CreateActivationDocument couple HTA with BB reconciliation for coverage', async () => {
-            let star = new Star();
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746Y\",\"marketParticipantName\": \"ENEDis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X0000013097454\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',marketEvaluationPointMrid: 'string',schedulingEntityRegisteredResourceMrid:'string',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
 
-            const orderBegin: ActivationDocument = {
+        it('should return ERROR UpdateActivationDocumentByOrders on authorozed changes', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'PDL00000000289766', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17V000000992746Y', // FK?
-                // reconciliation: false,
-                subOrderList: [],
+            const activationDocument_Producer: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: activationDocument_Producer});
+            const updateOrders_str = JSON.stringify(updateOrders);
+
+            try {
+                await star.UpdateActivationDocumentByOrders(transactionContext, updateOrders_str);
+            } catch(err) {
+                // console.info(err.message)
+                expect(err.message).to.equal(`ActivationDocument : ${activationDocument_Producer.activationDocumentMrid} does not exist`);
             }
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderBegin));
-
-            // chaincodeStub.MspiID = 'enedis';
-            // await star.CreateSystemOperator(transactionContext, '17V0000009927454', 'Enedis', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
-            // await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const orderCouple: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderCouple));
-
-            orderBegin.subOrderList= ['8c56459a-794a-4ed1-a7f6-33b0064508f2'];
-            let retBegin = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(retBegin).to.eql( Object.assign({docType: 'activationDocument', reconciliation: false}, orderBegin ));
-
-            orderCouple.subOrderList= ['8c56459a-794a-4ed1-a7f6-33b0064508f1'];
-            let retCouple = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f2")).toString());
-            expect(retCouple).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true}, orderCouple ));
         });
 
-        it('should return SUCCESS CreateActivationDocument couple HTA with BB and BE reconciliation', async () => {
-            let star = new Star();
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746Y\",\"marketParticipantName\": \"ENEDis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X0000013097454\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',marketEvaluationPointMrid: 'string',schedulingEntityRegisteredResourceMrid:'string',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
 
-            const orderBegin: ActivationDocument = {
+        it('should return ERROR UpdateActivationDocumentByOrders on authorozed changes', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'PDL00000000289766', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: false,
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17V000000992746Y', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
+            const activationDocument_Producer: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            activationDocument_Producer.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument_Producer.potentialParent= true;
+            activationDocument_Producer.potentialChild= false;
+
+
+            transactionContext.stub.getPrivateData.withArgs(collectionProducer,
+                activationDocument_Producer.activationDocumentMrid).resolves(Buffer.from(JSON.stringify(activationDocument_Producer)));
+
+            activationDocument_Producer.businessType = "new businessType";
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: activationDocument_Producer});
+            const updateOrders_str = JSON.stringify(updateOrders);
+
+            try {
+                await star.UpdateActivationDocumentByOrders(transactionContext, updateOrders_str);
+            } catch(err) {
+                // console.info(err.message)
+                expect(err.message).to.equal(`Error on document ${activationDocument_Producer.activationDocumentMrid} only orderEnd, potentialChild, potentialParent and subOrderList can be updated by orders.`);
             }
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderBegin));
-
-            // chaincodeStub.MspiID = 'enedis';
-            // await star.CreateSystemOperator(transactionContext, '17V0000009927454', 'Enedis', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
-            // await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const orderCouple: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderCouple));
-
-            const orderEnd: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f3', // PK
-                originAutomationRegisteredResourceMrid: 'PDL00000000289766', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                orderEnd: true,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderEnd));
-
-            let retEnd = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f3")).toString());
-            expect(retEnd).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f1']}, orderEnd ));
-            let retCouple = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f2")).toString());
-            expect(retCouple).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f1']}, orderCouple ));
-            let retBegin = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(retBegin).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f2','8c56459a-794a-4ed1-a7f6-33b0064508f3']}, orderBegin ));
         });
 
-        it('should return SUCCESS CreateActivationDocument couple HTA with BB and BE reconciliation for coverage', async () => {
-            let star = new Star();
 
-            chaincodeStub.MspiID = 'enedis';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746Y\",\"marketParticipantName\": \"ENEDis\",\"marketParticipantRoleType\": \"A50\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X000001309745X\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateSystemOperator(transactionContext, '{\"systemOperatorMarketParticipantMrId\": \"17V000000992746D\",\"marketParticipantName\": \"RTE\",\"marketParticipantRoleType\": \"A49\"}');
-            await star.CreateProducer(transactionContext, '{\"producerMarketParticipantMrId\": \"17X0000013097454\",\"producerMarketParticipantName\": \"EolienFR vert Cie\",\"producerMarketParticipantRoleType\": \"A21\"}');
-            const site: Site = {meteringPointMrid: 'PDL00000000289766',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',marketEvaluationPointMrid: 'string',schedulingEntityRegisteredResourceMrid:'string',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-            await star.CreateSite(transactionContext, JSON.stringify(site));
-            const yellowPage: YellowPages = {originAutomationRegisteredResourceMrid: "CRIVA1_ENEDIS_Y411",registeredResourceMrid: "PDL00000000289766",systemOperatorMarketParticipantMrid: "17V000000992746D"};
-            await star.CreateYellowPages(transactionContext, JSON.stringify(yellowPage));
 
-            const orderBegin: ActivationDocument = {
+        it('should return ERROR UpdateActivationDocumentByOrders on subOrderList', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
 
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f1', // PK
-                originAutomationRegisteredResourceMrid: 'PDL00000000289766', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
 
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17V000000992746Y', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
+            const activationDocument_Producer: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            activationDocument_Producer.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument_Producer.potentialParent= true;
+            activationDocument_Producer.potentialChild= false;
+            activationDocument_Producer.subOrderList = ["CCC"];
+
+
+            transactionContext.stub.getPrivateData.withArgs(collectionProducer,
+                activationDocument_Producer.activationDocumentMrid).resolves(Buffer.from(JSON.stringify(activationDocument_Producer)));
+
+            activationDocument_Producer.potentialParent= false;
+            activationDocument_Producer.orderEnd = true;
+            activationDocument_Producer.subOrderList = ["AAA", "BBB"];
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: activationDocument_Producer});
+            const updateOrders_str = JSON.stringify(updateOrders);
+
+            try {
+                await star.UpdateActivationDocumentByOrders(transactionContext, updateOrders_str);
+            } catch(err) {
+                // console.info(err.message)
+                expect(err.message).to.equal(`Error on document ${activationDocument_Producer.activationDocumentMrid} ids can only be added to subOrderList.`);
             }
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderBegin));
-
-            // chaincodeStub.MspiID = 'enedis';
-            // await star.CreateSystemOperator(transactionContext, '17V0000009927454', 'Enedis', 'A50');
-            // await star.createProducer(transactionContext, '17X000001309745X', 'EolienFR vert Cie', 'A21');
-            // await star.CreateSite(transactionContext, JSON.stringify(site));
-
-            const orderCouple: ActivationDocument = {
-
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f2', // PK
-                originAutomationRegisteredResourceMrid: 'CRIVA1_ENEDIS_Y411', // FK1
-                registeredResourceMrid: 'PDL00000000289766', // FK2
-                measurementUnitName: 'KW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: false,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                endCreatedDateTime: "2021-10-22T23:29:10.000Z",
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-
-            chaincodeStub.MspiID = 'enedis';
-            const siteB: Site = {meteringPointMrid: 'PDL00000000289769',systemOperatorMarketParticipantMrid: '17V000000992746D',producerMarketParticipantMrid: '17X000001309745X',technologyType: 'Eolien',siteType: 'Injection',siteName: 'Ferme éolienne de Genonville',substationMrid: 'GDO A4RTD',substationName: 'CIVRAY',siteAdminMrid: '489 981 029', siteLocation: 'Biscarosse', siteIecCode: 'S7X0000013077478', systemOperatorEntityFlexibilityDomainMrid: 'PSC4511', systemOperatorEntityFlexibilityDomainName: 'Départ 1', systemOperatorCustomerServiceName: 'DR Nantes Deux-Sèvres'};
-            await star.CreateSite(transactionContext, JSON.stringify(siteB));
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderCouple));
-
-            const orderEnd: ActivationDocument = {
-                activationDocumentMrid: '8c56459a-794a-4ed1-a7f6-33b0064508f3', // PK
-                originAutomationRegisteredResourceMrid: 'PDL00000000289766', // FK1
-                registeredResourceMrid: 'PDL00000000289769', // FK2
-                measurementUnitName: 'MW',
-                messageType: 'string',
-                businessType: 'string',
-                
-                orderEnd: true,
-
-                orderValue: '1',
-                startCreatedDateTime: "2021-10-22T10:29:10.000Z",
-                // testDateTime: 'Date', // Test DELETE ME //////////////////////
-                // endCreatedDateTime: new Date().toString(),
-                revisionNumber: '1',
-                reasonCode: 'string', // optionnal in case of TVC modulation
-                senderMarketParticipantMrid: '17V000000992746D', // FK?
-                receiverMarketParticipantMrid: '17X000001309745X', // FK?
-                // reconciliation: false,
-                // subOrderList: [],
-            }
-            chaincodeStub.MspiID = 'rte';
-            await star.CreateActivationDocument(transactionContext, JSON.stringify(orderEnd));
-
-            let retEnd = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f3")).toString());
-            expect(retEnd).to.eql( Object.assign({docType: 'activationDocument', reconciliation: false}, orderEnd ));
-            let retCouple = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f2")).toString());
-            expect(retCouple).to.eql( Object.assign({docType: 'activationDocument', reconciliation: true, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f1']}, orderCouple ));
-            let retBegin = JSON.parse((await chaincodeStub.getState("8c56459a-794a-4ed1-a7f6-33b0064508f1")).toString());
-            expect(retBegin).to.eql( Object.assign({docType: 'activationDocument', reconciliation: false, subOrderList: ['8c56459a-794a-4ed1-a7f6-33b0064508f2']}, orderBegin ));
         });
+
+
+
+        it('should return SUCCESS UpdateActivationDocumentByOrders', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionMap: Map<string, string[]> = params.values.get(ParametersType.ACTIVATION_DOCUMENT);
+            const collectionsTSO: string[] = collectionMap.get(RoleType.Role_TSO) as string[];
+            const collectionTSO: string = collectionsTSO[0];
+            const collectionsProducer: string[] = collectionMap.get(RoleType.Role_Producer) as string[];
+            const collectionProducer: string = collectionsProducer[0];
+
+            const activationDocument_Producer: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_JustStartDate));
+            activationDocument_Producer.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument_Producer.potentialParent= true;
+            activationDocument_Producer.potentialChild= false;
+
+            const activationDocument_TSO: ActivationDocument = JSON.parse(JSON.stringify(Values.HTB_ActivationDocument_HTA_JustStartDate));
+            activationDocument_TSO.docType=DocType.ACTIVATION_DOCUMENT;
+            activationDocument_TSO.potentialParent= true;
+            activationDocument_TSO.potentialChild= false;
+
+
+            transactionContext.stub.getPrivateData.withArgs(collectionProducer,
+                activationDocument_Producer.activationDocumentMrid).resolves(Buffer.from(JSON.stringify(activationDocument_Producer)));
+            transactionContext.stub.getPrivateData.withArgs(collectionTSO,
+                activationDocument_TSO.activationDocumentMrid).resolves(Buffer.from(JSON.stringify(activationDocument_TSO)));
+
+            activationDocument_Producer.potentialParent= false;
+            activationDocument_Producer.orderEnd = true;
+            activationDocument_Producer.subOrderList = ["AAA", "BBB"];
+            activationDocument_TSO.potentialParent= false;
+            activationDocument_TSO.subOrderList = ["111", "222"];
+
+            const updateOrders: DataReference[] = [];
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionProducer, data: activationDocument_Producer});
+            updateOrders.push({docType:DocType.ACTIVATION_DOCUMENT, collection: collectionTSO, data: activationDocument_TSO});
+            const updateOrders_str = JSON.stringify(updateOrders);
+
+            await star.UpdateActivationDocumentByOrders(transactionContext, updateOrders_str);
+
+            // console.info("-----------")
+            // console.info(transactionContext.stub.putPrivateData.firstCall.args);
+            // console.info("ooooooooo")
+            // console.info(Buffer.from(transactionContext.stub.putPrivateData.firstCall.args[2].toString()).toString('utf8'));
+            // console.info(JSON.stringify(activationDocument_garbageProducer))
+            // console.info("-----------")
+            // console.info(transactionContext.stub.putPrivateData.secondCall.args);
+            // console.info("ooooooooo")
+            // console.info(Buffer.from(transactionContext.stub.putPrivateData.secondCall.args[2].toString()).toString('utf8'));
+            // console.info(JSON.stringify(activationDocument_garbageTSO))
+            // console.info("-----------")
+
+            transactionContext.stub.putPrivateData.firstCall.should.have.been.calledWithExactly(
+                collectionProducer,
+                activationDocument_Producer.activationDocumentMrid,
+                Buffer.from(JSON.stringify(activationDocument_Producer))
+            );
+            transactionContext.stub.putPrivateData.secondCall.should.have.been.calledWithExactly(
+                collectionTSO,
+                activationDocument_TSO.activationDocumentMrid,
+                Buffer.from(JSON.stringify(activationDocument_TSO))
+            );
+
+            expect(transactionContext.stub.putPrivateData.callCount).to.equal(2);
+        });
+
     });
+
+
 });

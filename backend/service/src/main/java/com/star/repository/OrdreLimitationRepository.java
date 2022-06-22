@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.star.exception.BusinessException;
 import com.star.exception.TechnicalException;
 import com.star.models.limitation.OrdreLimitation;
-import com.star.models.producer.Producer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.hyperledger.fabric.gateway.Contract;
@@ -14,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
@@ -30,6 +28,8 @@ public class OrdreLimitationRepository {
     public static final String CREATE = "CreateActivationDocument";
     public static final String GET_ORDER_BY_QUERY = "GetActivationDocumentByQuery";
     public static final String GET_BY_QUERY = "GetActivationDocumentByQuery";
+    public static final String GET_ACTIVATION_DOCUMENT_RECONCILIATION_STATE = "GetActivationDocumentReconciliationState";
+    public static final String UPDATE_ACTIVATION_DOCUMENT_BY_ORDERS = "UpdateActivationDocumentByOrders";
 
     @Autowired
     private Contract contract;
@@ -54,6 +54,12 @@ public class OrdreLimitationRepository {
             if (ordreLimitation != null) {
                 try {
                     contract.submitTransaction(CREATE, objectMapper.writeValueAsString(ordreLimitation));
+                    // Appeler la fonction GetActivationDocumentReconciliationState
+                    byte[] evaluateTransaction = contract.evaluateTransaction(GET_ACTIVATION_DOCUMENT_RECONCILIATION_STATE);
+                    // Appeler la fonction UpdateActivationDocumentByOrders
+                    if (evaluateTransaction != null) {
+                        contract.submitTransaction(UPDATE_ACTIVATION_DOCUMENT_BY_ORDERS, new String(evaluateTransaction));
+                    }
                 } catch (TimeoutException | InterruptedException | JsonProcessingException exception) {
                     throw new TechnicalException("Erreur technique lors de création de l'ordre de limitation ", exception);
                 } catch (ContractException contractException) {
@@ -66,9 +72,14 @@ public class OrdreLimitationRepository {
 
     public List<OrdreLimitation> findOrderByQuery(String query) throws TechnicalException {
         try {
+            byte[] evaluateTransaction = contract.evaluateTransaction(GET_ACTIVATION_DOCUMENT_RECONCILIATION_STATE);
+            // Appeler la fonction UpdateActivationDocumentByOrders
+            if (evaluateTransaction != null) {
+                contract.submitTransaction(UPDATE_ACTIVATION_DOCUMENT_BY_ORDERS, new String(evaluateTransaction));
+            }
             byte[] response = contract.evaluateTransaction(GET_ORDER_BY_QUERY, query);
             return response != null ? Arrays.asList(objectMapper.readValue(new String(response), OrdreLimitation[].class)) : emptyList();
-        } catch (JsonProcessingException exception) {
+        } catch (TimeoutException | InterruptedException | JsonProcessingException exception) {
             throw new TechnicalException("Erreur technique lors de la recherche des ordres de limitation", exception);
         } catch (ContractException contractException) {
             throw new BusinessException(contractException.getMessage());

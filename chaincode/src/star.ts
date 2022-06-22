@@ -6,13 +6,16 @@ import { Context, Contract } from 'fabric-contract-api';
 import { ActivationDocumentController } from './controller/ActivationDocumentController';
 import { EnergyAccountController } from './controller/EnergyAccountController';
 import { EnergyAmountController } from './controller/EnergyAmountController';
+import { ParametersController } from './controller/ParametersController';
+import { STARParameters } from './model/starParameters';
 import { ProducerController } from './controller/ProducerController';
 import { ReferenceEnergyAccountController } from './controller/ReferenceEnergyAccountController';
 import { SiteController } from './controller/SiteController';
 import { SystemOperatorController } from './controller/SystemOperatorController';
 import { ViewMarketParticipantController } from './controller/ViewMarketParticipantController';
 import { YellowPagesController } from './controller/YellowPagesController';
-import {HistoriqueActivationController} from "./controller/HistoriqueActivationController";
+import {HistoryActivationController} from "./controller/HistoryActivationController";
+import { ParametersType } from './enums/ParametersType';
 
 export class Star extends Contract {
 
@@ -22,11 +25,47 @@ export class Star extends Contract {
     //     console.info('============= END   : Initialize Ledger ===========');
     // }
 
+    public async ping(ctx: Context) {
+        console.debug('============= Ping Call ===========');
+
+        const params: STARParameters = await ParametersController.getParameterValues(ctx);
+        const identity = params.values.get(ParametersType.IDENTITY);
+        return identity;
+    }
+
+    // /*      Parameters          */
+    // public async changeAllParameters(ctx: Context, inputStr: string) {
+    //     try {
+    //         return (await ParametersController.changeAllParameters(ctx, inputStr));
+    //     } catch (error) {
+    //         throw error;
+    //     }
+    // }
+
+    // public async getAllParameters(
+    //     ctx: Context) {
+    //     try {
+    //         return (await ParametersController.getAllParameters(ctx));
+    //     } catch (error) {
+    //         throw error;
+    //     }
+    // }
+
+    // public async getParameter(
+    //     ctx: Context, paramname: string) {
+    //     try {
+    //         return (await ParametersController.getParameterValues(ctx,paramname));
+    //     } catch (error) {
+    //         throw error;
+    //     }
+    // }
+
     /*      SystemOperator      */
 
     public async CreateSystemOperator(ctx: Context, inputStr: string) {
         try {
-            return (await SystemOperatorController.createSystemOperator(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SystemOperatorController.createSystemOperator(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -34,7 +73,8 @@ export class Star extends Contract {
 
     public async UpdateSystemOperator(ctx: Context, inputStr: string) {
         try {
-            return (await SystemOperatorController.updateSystemOperator(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SystemOperatorController.updateSystemOperator(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -44,6 +84,7 @@ export class Star extends Contract {
         ctx: Context,
         id: string) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await SystemOperatorController.querySystemOperator(ctx, id));
         } catch (error) {
             throw error;
@@ -53,6 +94,7 @@ export class Star extends Contract {
     public async GetAllSystemOperator(
         ctx: Context) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await SystemOperatorController.getAllSystemOperator(ctx));
         } catch (error) {
             throw error;
@@ -62,6 +104,7 @@ export class Star extends Contract {
     public async GetSystemOperatorByQuery(
         ctx: Context, query: string) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await SystemOperatorController.getSystemOperatorByQuery(ctx, query));
         } catch (error) {
             throw error;
@@ -72,6 +115,7 @@ export class Star extends Contract {
 
     public async CreateProducer(ctx: Context, inputStr: string) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ProducerController.createProducer(ctx, inputStr));
         } catch (error) {
             throw error;
@@ -80,7 +124,26 @@ export class Star extends Contract {
 
     public async UpdateProducer(ctx: Context, inputStr: string) {
         try {
-            return (await ProducerController.updateProducer(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ProducerController.updateProducer(ctx, params, inputStr));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async CreateProducerList(ctx: Context, inputStr: string) {
+        try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ProducerController.createProducerList(ctx, inputStr));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async UpdateProducerList(ctx: Context, inputStr: string) {
+        try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ProducerController.updateProducerList(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -90,6 +153,7 @@ export class Star extends Contract {
         ctx: Context,
         id: string) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ProducerController.queryProducer(ctx, id));
         } catch (error) {
             throw error;
@@ -99,6 +163,7 @@ export class Star extends Contract {
     public async GetAllProducer(
         ctx: Context) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ProducerController.getAllProducer(ctx));
         } catch (error) {
             throw error;
@@ -109,7 +174,8 @@ export class Star extends Contract {
 
     public async CreateSite(ctx: Context, inputStr: string) {
         try {
-            return (await SiteController.createSite(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SiteController.createSite(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -117,7 +183,8 @@ export class Star extends Contract {
 
     public async UpdateSite(ctx: Context, inputStr: string) {
         try {
-            return (await SiteController.updateSite(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SiteController.updateSite(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -127,7 +194,8 @@ export class Star extends Contract {
         ctx: Context,
         id: string) {
         try {
-            return (await SiteController.querySite(ctx, id));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SiteController.querySite(ctx, params, id));
         } catch (error) {
             throw error;
         }
@@ -137,7 +205,8 @@ export class Star extends Contract {
         ctx: Context,
         id: string) {
         try {
-            return (await SiteController.siteExists(ctx, id));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SiteController.siteExists(ctx, params, id));
         } catch (error) {
             throw error;
         }
@@ -145,9 +214,10 @@ export class Star extends Contract {
 
     public async GetSiteWithPagination(
         ctx: Context,
-        query: string, pageSize: number, bookmark: string) {
+        query: string) {
         try {
-            return (await SiteController.getSitesByQuery(ctx, query, pageSize, bookmark));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SiteController.getSitesByQuery(ctx, params, query));
         } catch (error) {
             throw error;
         }
@@ -157,7 +227,8 @@ export class Star extends Contract {
         ctx: Context,
         id: string) {
         try {
-            return (await SiteController.getSitesBySystemOperator(ctx, id));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SiteController.getSitesBySystemOperator(ctx, params, id));
         } catch (error) {
             throw error;
         }
@@ -167,7 +238,8 @@ export class Star extends Contract {
         ctx: Context,
         id: string) {
         try {
-            return (await SiteController.getSitesByProducer(ctx, id));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await SiteController.getSitesByProducer(ctx, params, id));
         } catch (error) {
             throw error;
         }
@@ -178,6 +250,7 @@ export class Star extends Contract {
     public async ViewSystemOperaterMarketParticipant(
         ctx: Context) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ViewMarketParticipantController.viewSystemOperaterMarketParticipant(ctx));
         } catch (error) {
             throw error;
@@ -190,6 +263,7 @@ export class Star extends Contract {
         ctx: Context,
         id: string) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ViewMarketParticipantController.viewProducerMarketParticipant(ctx, id));
         } catch (error) {
             throw error;
@@ -200,7 +274,26 @@ export class Star extends Contract {
 
     public async CreateActivationDocument(ctx: Context, inputStr: string) {
         try {
-            return (await ActivationDocumentController.createActivationDocument(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ActivationDocumentController.createActivationDocument(ctx, params, inputStr));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async GetActivationDocumentReconciliationState(ctx: Context) {
+        try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ActivationDocumentController.getReconciliationState(ctx, params));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async UpdateActivationDocumentByOrders(ctx: Context, inputStr: string) {
+        try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ActivationDocumentController.updateActivationDocumentByOrders(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -210,7 +303,8 @@ export class Star extends Contract {
         ctx: Context,
         inputStr: string) {
         try {
-            return (await ActivationDocumentController.getActivationDocumentByProducer(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ActivationDocumentController.getActivationDocumentByProducer(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -220,7 +314,8 @@ export class Star extends Contract {
         ctx: Context,
         inputStr: string) {
         try {
-            return (await ActivationDocumentController.getActivationDocumentBySystemOperator(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ActivationDocumentController.getActivationDocumentBySystemOperator(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -230,18 +325,20 @@ export class Star extends Contract {
         ctx: Context,
         query: string) {
         try {
-            return (await ActivationDocumentController.getActivationDocumentByQuery(ctx, query));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ActivationDocumentController.getActivationDocumentByQuery(ctx, params, query));
         } catch (error) {
             throw error;
         }
     }
 
-    /*      Historique limitation       */
-    public async GetHistoriqueWithPagination(
+    /*      Limitation History       */
+    public async GetActivationDocumentHistory(
         ctx: Context,
-        query: string, pageSize: number, bookmark: string) {
+        inputStr: string) {
         try {
-            return (await HistoriqueActivationController.getHistoriqueByQuery(ctx, query, pageSize, bookmark));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await HistoryActivationController.getHistoryByQuery(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -253,7 +350,8 @@ export class Star extends Contract {
 
     public async CreateYellowPages(ctx: Context, inputStr: string) {
         try {
-            return (await YellowPagesController.createYellowPages(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await YellowPagesController.createYellowPages(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -262,6 +360,7 @@ export class Star extends Contract {
     public async GetAllYellowPages(
         ctx: Context) {
         try {
+            // const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await YellowPagesController.getAllYellowPages(ctx));
         } catch (error) {
             throw error;
@@ -272,7 +371,8 @@ export class Star extends Contract {
 
     public async CreateEnergyAccount(ctx: Context, inputStr: string) {
         try {
-            return (await EnergyAccountController.createEnergyAccount(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAccountController.createEnergyAccount(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -280,7 +380,8 @@ export class Star extends Contract {
 
     public async UpdateEnergyAccount(ctx: Context, inputStr: string) {
         try {
-            return (await EnergyAccountController.updateEnergyAccount(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAccountController.updateEnergyAccount(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -293,9 +394,11 @@ export class Star extends Contract {
         systemOperatorEicCode: string,
         startCreatedDateTime: string) {
                 try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await EnergyAccountController.getEnergyAccountForSystemOperator
                 (
                     ctx,
+                    params,
                     meteringPointMrid,
                     systemOperatorEicCode,
                     startCreatedDateTime,
@@ -312,9 +415,11 @@ export class Star extends Contract {
         producerEicCode: string,
         startCreatedDateTime: string) {
                 try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await EnergyAccountController.getEnergyAccountByProducer
                 (
                     ctx,
+                    params,
                     meteringPointMrid,
                     producerEicCode,
                     startCreatedDateTime,
@@ -327,9 +432,10 @@ export class Star extends Contract {
 
     public async GetEnergyAccountWithPagination(
         ctx: Context,
-        query: string, pageSize: number, bookmark: string) {
+        query: string) {
         try {
-            return (await EnergyAccountController.getEnergyAccountByQuery(ctx, query, pageSize, bookmark));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAccountController.getEnergyAccountByQuery(ctx, params, query));
         } catch (error) {
             throw error;
         }
@@ -339,7 +445,8 @@ export class Star extends Contract {
 
     public async CreateReferenceEnergyAccount(ctx: Context, inputStr: string) {
         try {
-            return (await ReferenceEnergyAccountController.createReferenceEnergyAccount(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ReferenceEnergyAccountController.createReferenceEnergyAccount(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -351,9 +458,11 @@ export class Star extends Contract {
         systemOperatorEicCode: string,
         startCreatedDateTime: string) {
                 try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ReferenceEnergyAccountController.getReferenceEnergyAccountForSystemOperator
                 (
                     ctx,
+                    params,
                     meteringPointMrid,
                     systemOperatorEicCode,
                     startCreatedDateTime,
@@ -370,9 +479,11 @@ export class Star extends Contract {
         producerEicCode: string,
         startCreatedDateTime: string) {
                 try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ReferenceEnergyAccountController.getReferenceEnergyAccountByProducer
                 (
                     ctx,
+                    params,
                     meteringPointMrid,
                     producerEicCode,
                     startCreatedDateTime,
@@ -387,7 +498,17 @@ export class Star extends Contract {
 
     public async CreateTSOEnergyAmount(ctx: Context, inputStr: string) {
         try {
-            return (await EnergyAmountController.createTSOEnergyAmount(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAmountController.createTSOEnergyAmount(ctx, params, inputStr));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async UpdateTSOEnergyAmount(ctx: Context, inputStr: string) {
+        try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAmountController.updateTSOEnergyAmount(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -395,7 +516,17 @@ export class Star extends Contract {
 
     public async CreateDSOEnergyAmount(ctx: Context, inputStr: string) {
         try {
-            return (await EnergyAmountController.createDSOEnergyAmount(ctx, inputStr));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAmountController.createDSOEnergyAmount(ctx, params, inputStr));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async UpdateDSOEnergyAmount(ctx: Context, inputStr: string) {
+        try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAmountController.updateDSOEnergyAmount(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }
@@ -407,9 +538,11 @@ export class Star extends Contract {
         systemOperatorEicCode: string,
         startCreatedDateTime: string) {
                 try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await EnergyAmountController.getEnergyAmountForSystemOperator
                 (
                     ctx,
+                    params,
                     meteringPointMrid,
                     systemOperatorEicCode,
                     startCreatedDateTime,
@@ -426,9 +559,11 @@ export class Star extends Contract {
         producerEicCode: string,
         startCreatedDateTime: string) {
                 try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await EnergyAmountController.getEnergyAmountByProducer
                 (
                     ctx,
+                    params,
                     meteringPointMrid,
                     producerEicCode,
                     startCreatedDateTime,
@@ -440,10 +575,10 @@ export class Star extends Contract {
     }
 
     public async GetEnergyAmountWithPagination(
-        ctx: Context,
-        query: string, pageSize: number, bookmark: string) {
+        ctx: Context, query: string) {
         try {
-            return (await EnergyAmountController.getEnergyAmountByQuery(ctx, query, pageSize, bookmark));
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await EnergyAmountController.getEnergyAmountByQuery(ctx, params, query));
         } catch (error) {
             throw error;
         }

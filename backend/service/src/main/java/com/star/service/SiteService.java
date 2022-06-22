@@ -55,6 +55,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 @Slf4j
 public class SiteService {
     private static final String REGEX = "(?i)(";
+    private static final String STRING_REGEX = "[^A-Za-z0-9.,;\\-\\_:!?%]";
     private static final String METERING_POINT_MRID = "meteringPointMrid";
 
     @Autowired
@@ -99,10 +100,10 @@ public class SiteService {
         return importSiteResult;
     }
 
-    public PageHLF<Site> findSite(SiteCrteria criteria, String bookmark, Pageable pageable) throws BusinessException, TechnicalException {
+    public Site[] findSite(SiteCrteria criteria, Sort sort) throws BusinessException, TechnicalException {
         boolean useIndex = false;
-        Sort.Order producerMarketParticipantNameOrder = pageable.getSort().getOrderFor("producerMarketParticipantName");
-        Sort.Order technologyTypeOrder = pageable.getSort().getOrderFor("technologyType");
+        Sort.Order producerMarketParticipantNameOrder = sort.getOrderFor("producerMarketParticipantName");
+        Sort.Order technologyTypeOrder = sort.getOrderFor("technologyType");
         var selectors = new ArrayList<Selector>();
         selectors.add(Expression.eq("docType", SITE.getDocType()));
         addCriteria(selectors, criteria);
@@ -121,7 +122,7 @@ public class SiteService {
         }
         String query = queryBuilder.build();
         log.debug("Transaction query: " + query);
-        return siteRepository.findSiteByQuery(query, String.valueOf(pageable.getPageSize()), bookmark);
+        return siteRepository.findSiteByQuery(query);
     }
 
 
@@ -187,8 +188,8 @@ public class SiteService {
         // Vérifier que les ids n'existent pas déjà
         List<String> meteringPointMrids = importSiteResult.getDatas().stream().map(Site::getMeteringPointMrid).collect(toList());
         for (String meteringPointMrId : meteringPointMrids) {
-            boolean existSite = siteRepository.existSite(meteringPointMrId);
-            // Traitmeent s'il s'agit d'une création de site.
+            boolean existSite = create ? false : siteRepository.existSite(meteringPointMrId);
+            // Traitement s'il s'agit d'une création de site.
             if (create && existSite) {
                 importSiteResult.getErrors().add(messageSource.getMessage("import.file.meteringpointmrid.exist.error",
                         new String[]{meteringPointMrId}, null));
@@ -215,15 +216,16 @@ public class SiteService {
         Map<String, String> mapProducers = producerRepository.getProducers().stream()
                 .collect(Collectors.toMap(Producer::getProducerMarketParticipantMrid, Producer::getProducerMarketParticipantName));
         importSiteResult.getDatas().forEach(site -> {
+//            String value = site.getSiteName().replaceAll("[^A-Za-z0-9]", " ");
+            String value = site.getSiteName().replaceAll(STRING_REGEX, " ");
+            site.setSiteName(value);
             site.setProducerMarketParticipantName(mapProducers.get(site.getProducerMarketParticipantMrid()));
             if (site.getTechnologyType() != null) {
                 site.setTechnologyType(TechnologyTypeEnum.fromValue(site.getTechnologyType()).getLabel());
             }
         });
-
         return importSiteResult;
     }
-
 
     private ImportSiteResult checkFileContent(String fileName, Reader streamReader, InstanceEnum instance) throws IOException {
         importUtilsService.checkFile(fileName, streamReader, FileExtensionEnum.CSV.getValue());
