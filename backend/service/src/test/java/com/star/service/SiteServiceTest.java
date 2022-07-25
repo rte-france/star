@@ -4,7 +4,6 @@ import com.star.AbstractTest;
 import com.star.enums.TechnologyTypeEnum;
 import com.star.exception.BusinessException;
 import com.star.exception.TechnicalException;
-import com.star.models.common.PageHLF;
 import com.star.models.producer.Producer;
 import com.star.models.site.ImportSiteResult;
 import com.star.models.site.Site;
@@ -20,7 +19,6 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.io.IOException;
@@ -44,9 +42,6 @@ class SiteServiceTest extends AbstractTest {
 
     @Value("classpath:/site/site-tso-ok.csv")
     private Reader csvSiteTsoOk;
-
-    @Value("classpath:/site/site-tso-ko.csv")
-    private Reader csvSiteTsoKo;
 
     @Value("classpath:/site/site-technology-type-ko.csv")
     private Reader csvSiteTechnologieTypeKo;
@@ -178,26 +173,6 @@ class SiteServiceTest extends AbstractTest {
     }
 
     @Test
-    void testImportSiteDsoOnTsoInstance() throws IOException, TechnicalException, ContractException {
-        // GIVEN
-        String fileName = "site-tso-ko.csv";
-        Producer producer = Producer.builder().producerMarketParticipantMrid("17Y100A101R0629X").
-                producerMarketParticipantName("producer_test").producerMarketParticipantRoleType("roleType").build();
-        Mockito.when(producerRepository.getProducers()).thenReturn(Arrays.asList(producer));
-        Mockito.when(contract.evaluateTransaction(any())).thenReturn("false".getBytes());
-
-        // WHEN
-        siteService.importSite(fileName, csvSiteTsoKo, TSO);
-
-        // THEN
-        verify(siteRepository, Mockito.times(0)).existSite(meteringPointMridCaptor.capture());
-        verify(siteRepository, Mockito.times(0)).saveSites(siteArgumentCaptor.capture());
-
-
-    }
-
-
-    @Test
     void testImportSiteOk() throws IOException, TechnicalException, ContractException {
         // GIVEN
         String fileName = "site-tso-ok.csv";
@@ -259,36 +234,30 @@ class SiteServiceTest extends AbstractTest {
     }
 
     @Test
-    void testFindSiteDsoOnTsoInstance() throws IOException, ContractException {
+    void testFindSiteDsoOnTsoInstance() {
         // GIVEN
-        String bookmark = "kBHIYBiy198";
         SiteCrteria siteCrteria = SiteCrteria.builder().siteIecCode("IecCode").siteName("site_test").instance(TSO)
                 .meteringPointMrId("PRMJGHVG17868").producerMarketParticipantMrid("PRODUCER_MR_ID")
                 .producerMarketParticipantName("PRC_NAME").substationMrid("SUB_MRID").substationName("SUB_NAME")
                 .technologyType(Arrays.asList(TechnologyTypeEnum.EOLIEN)).build();
-        var siteResponse = PageHLF.builder().bookmark(bookmark).fetchedRecordsCount(1).records(Arrays.asList(new Site())).build();
-        Sort sort = Sort.by("technologyType");
 
         // WHEN
-        Assertions.assertThrows(BusinessException.class, () -> siteService.findSite(siteCrteria, sort));
+        Assertions.assertThrows(BusinessException.class, () -> siteService.findSite(siteCrteria, Sort.by("technologyType")));
 
 
         // THEN
     }
 
     @Test
-    void testFindSite() throws IOException, TechnicalException, ContractException {
+    void testFindSite() throws TechnicalException {
         // GIVEN
-        String bookmark = "kBHIYBiy198";
         SiteCrteria siteCrteria = SiteCrteria.builder().siteIecCode("IecCode").siteName("site_test").instance(TSO)
                 .meteringPointMrId("PDLJGHVG17868").producerMarketParticipantMrid("PRODUCER_MR_ID")
                 .producerMarketParticipantName("PRC_NAME").substationMrid("SUB_MRID").substationName("SUB_NAME")
                 .technologyType(Arrays.asList(TechnologyTypeEnum.EOLIEN)).build();
-        var siteResponse = PageHLF.builder().bookmark(bookmark).fetchedRecordsCount(1).records(Arrays.asList(new Site())).build();
-        Sort sort = Sort.by("technologyType");
 
         // WHEN
-        var siteResponseResult = siteService.findSite(siteCrteria, sort);
+        siteService.findSite(siteCrteria, Sort.by("technologyType"));
 
         // THEN
         verify(siteRepository, Mockito.times(1)).findSiteByQuery(queryCaptor.capture());
@@ -302,15 +271,12 @@ class SiteServiceTest extends AbstractTest {
     @Test
     void testFindSiteWithoutMeteringPointMrIdOnTso() throws IOException, TechnicalException, ContractException {
         // GIVEN
-        String bookmark = "kBHIYBiy198";
         SiteCrteria siteCrteria = SiteCrteria.builder().siteIecCode("IecCode").siteName("site_test").instance(TSO)
                 .producerMarketParticipantMrid("PRODUCER_MR_ID")
                 .producerMarketParticipantName("PRC_NAME").substationMrid("SUB_MRID").substationName("SUB_NAME").build();
-        var siteResponse = PageHLF.builder().bookmark(bookmark).fetchedRecordsCount(1).records(Arrays.asList(new Site())).build();
-        Sort sort = Sort.by("technologyType");
 
         // WHEN
-        var siteResponseResult = siteService.findSite(siteCrteria, sort);
+        siteService.findSite(siteCrteria, Sort.by("technologyType"));
 
         // THEN
         verify(siteRepository, Mockito.times(1)).findSiteByQuery(queryCaptor.capture());
@@ -320,17 +286,14 @@ class SiteServiceTest extends AbstractTest {
     }
 
     @Test
-    void testFindSiteWithoutMeteringPointMrIdOnDso() throws IOException, TechnicalException, ContractException {
+    void testFindSiteWithoutMeteringPointMrIdOnDso() throws TechnicalException {
         // GIVEN
-        String bookmark = "kBHIYBiy198";
         SiteCrteria siteCrteria = SiteCrteria.builder().siteIecCode("IecCode").siteName("site_test").instance(DSO)
                 .producerMarketParticipantMrid("PRODUCER_MR_ID")
                 .producerMarketParticipantName("PRC_NAME").substationMrid("SUB_MRID").substationName("SUB_NAME").build();
-        var siteResponse = PageHLF.builder().bookmark(bookmark).fetchedRecordsCount(1).records(Arrays.asList(new Site())).build();
-        Sort sort = Sort.by("producerMarketParticipantName");
 
         // WHEN
-        var siteResponseResult = siteService.findSite(siteCrteria, sort);
+        siteService.findSite(siteCrteria, Sort.by("producerMarketParticipantName"));
 
         // THEN
         verify(siteRepository, Mockito.times(1)).findSiteByQuery(queryCaptor.capture());

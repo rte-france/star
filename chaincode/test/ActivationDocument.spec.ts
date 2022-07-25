@@ -79,7 +79,7 @@ describe('Star Tests ActivationDocument', () => {
 
                 await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('failed inserting key');
             }
         });
@@ -89,7 +89,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, 'XXXXXX');
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('ERROR createActivationDocument-> Input string NON-JSON value');
             }
         });
@@ -125,7 +125,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('registeredResourceMrid is required');
             }
         });
@@ -139,7 +139,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('measurementUnitName is required');
             }
         });
@@ -153,7 +153,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('messageType is required');
             }
         });
@@ -167,7 +167,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('businessType is required');
             }
         });
@@ -181,8 +181,36 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('orderEnd is required');
+            }
+        });
+
+        it('should return ERROR CreateActivationDocument missing senderMarketParticipantMrid', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            var input = JSON.stringify(Values.HTA_ActivationDocument_Valid);
+            input = await Values.deleteJSONField(input, "senderMarketParticipantMrid");
+
+            try {
+                await star.CreateActivationDocument(transactionContext, input);
+            } catch(err) {
+                // console.info(err.message)
+                expect(err.message).to.equal('senderMarketParticipantMrid is required');
+            }
+        });
+
+        it('should return ERROR CreateActivationDocument missing receiverMarketParticipantMrid', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+
+            var input = JSON.stringify(Values.HTA_ActivationDocument_Valid);
+            input = await Values.deleteJSONField(input, "receiverMarketParticipantMrid");
+
+            try {
+                await star.CreateActivationDocument(transactionContext, input);
+            } catch(err) {
+                // console.info(err.message)
+                expect(err.message).to.equal('receiverMarketParticipantMrid is required');
             }
         });
 
@@ -193,7 +221,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('Organisation, '
                     .concat(Values.FakeMSP)
                     .concat(' does not have write access for Activation Document'));
@@ -226,7 +254,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('ERROR createActivationDocument : System Operator : '
                     .concat(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid)
                     .concat(' does not exist for Activation Document ')
@@ -274,9 +302,29 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('Order must have a limitation value');
             }
+        });
+
+        it('should return ERROR CreateActivationDocument couple HTA incoherency between messageType, businessType and reason code', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+            transactionContext.stub.getState.withArgs(Values.HTA_systemoperator.systemOperatorMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(Values.HTA_Producer.producerMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], Values.HTA_site_valid.meteringPointMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+
+            activationDocument.reasonCode = '';
+            try {
+                await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
+            } catch(err) {
+                // console.info(err.message)
+                expect(err.message).to.equal(`Incoherency between messageType, businessType and reason code for Activation Document ${activationDocument.activationDocumentMrid} creation.`);
+            }
+
         });
 
         it('should return SUCCESS CreateActivationDocument couple HTA', async () => {
@@ -317,6 +365,69 @@ describe('Star Tests ActivationDocument', () => {
 
             expect(transactionContext.stub.putPrivateData.callCount).to.equal(1);
         });
+
+        it('should return SUCCESS CreateActivationDocumentListe 2 docs HTA', async () => {
+            transactionContext.clientIdentity.getMSPID.returns(OrganizationTypeMsp.ENEDIS);
+            const activationDocument:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid));
+            const activationDocument2:ActivationDocument = JSON.parse(JSON.stringify(Values.HTA_ActivationDocument_Valid_Doc2));
+
+            transactionContext.stub.getState.withArgs(activationDocument.senderMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(activationDocument.receiverMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+            transactionContext.stub.getState.withArgs(activationDocument2.senderMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_systemoperator)));
+            transactionContext.stub.getState.withArgs(activationDocument2.receiverMarketParticipantMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_Producer)));
+
+            const params: STARParameters = await ParametersController.getParameterValues(transactionContext);
+            const collectionNames: string[] = params.values.get(ParametersType.SITE);
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], activationDocument.registeredResourceMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+            transactionContext.stub.getPrivateData.withArgs(collectionNames[0], activationDocument2.registeredResourceMrid).resolves(Buffer.from(JSON.stringify(Values.HTA_site_valid)));
+
+            // const iterator = Values.getYellowPageQueryMock(Values.HTA_yellowPage, mockHandler);
+            // const query = `{"selector": {"docType": "yellowPages", "originAutomationRegisteredResourceMrid": "${activationDocument.originAutomationRegisteredResourceMrid}"}}`;
+            // transactionContext.stub.getQueryResult.withArgs(query).resolves(iterator);
+
+
+            const listActivationDocuments = [activationDocument, activationDocument2];
+            await star.CreateActivationDocumentList(transactionContext, JSON.stringify(listActivationDocuments));
+
+            const expected: ActivationDocument = activationDocument;
+            expected.orderEnd = true;
+            expected.potentialParent = false;
+            expected.potentialChild = true;
+            expected.docType = 'activationDocument';
+            const expected2: ActivationDocument = activationDocument2;
+            expected2.orderEnd = true;
+            expected2.potentialParent = false;
+            expected2.potentialChild = true;
+            expected2.docType = 'activationDocument';
+
+            // console.info("-----------")
+            // console.info(transactionContext.stub.putPrivateData.firstCall.args);
+            // console.info("ooooooooo")
+            // console.info(Buffer.from(transactionContext.stub.putPrivateData.firstCall.args[2].toString()).toString('utf8'));
+            // console.info(JSON.stringify(expected))
+            // console.info("-----------")
+            // console.info(transactionContext.stub.putPrivateData.secondCall.args);
+            // console.info("ooooooooo")
+            // console.info(Buffer.from(transactionContext.stub.putPrivateData.secondCall.args[2].toString()).toString('utf8'));
+            // console.info(JSON.stringify(expected))
+            // console.info("-----------")
+
+
+            transactionContext.stub.putPrivateData.firstCall.should.have.been.calledWithExactly(
+                "enedis-producer",
+                expected.activationDocumentMrid,
+                Buffer.from(JSON.stringify(expected))
+            );
+
+            transactionContext.stub.putPrivateData.secondCall.should.have.been.calledWithExactly(
+                "enedis-producer",
+                expected2.activationDocumentMrid,
+                Buffer.from(JSON.stringify(expected2))
+            );
+
+            expect(transactionContext.stub.putPrivateData.callCount).to.equal(2);
+        });
+
     });
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////    BEGIN     ////////////////////////////
@@ -379,7 +490,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, input);
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('activationDocumentMrid is a compulsory string');
             }
         });
@@ -397,7 +508,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal(`Organisation, ${OrganizationTypeMsp.RTE} cannot send Activation Document for sender ${OrganizationTypeMsp.ENEDIS}`);
             }
         });
@@ -415,7 +526,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('Site : '
                     .concat(Values.HTB_site_valid.meteringPointMrid)
                     .concat(' does not exist for Activation Document ')
@@ -437,7 +548,7 @@ describe('Star Tests ActivationDocument', () => {
             try {
                 await star.CreateActivationDocument(transactionContext, JSON.stringify(activationDocument));
             } catch(err) {
-                console.info(err.message)
+                // console.info(err.message)
                 expect(err.message).to.equal('Producer : '
                     .concat(Values.HTB_Producer.producerMarketParticipantMrid)
                     .concat(' does not exist for Activation Document ')
@@ -1087,7 +1198,7 @@ describe('Star Tests ActivationDocument', () => {
             var args: string[] = [];
             args.push(`"potentialParent":true`);
             args.push(`"registeredResourceMrid":{"$in":${registeredResourceMridList_str}}`);
-            args.push(`"businessType":"${orderType}"`);
+            // args.push(`"businessType":"${orderType}"`);
             const date_criteria: string = `"$or":[`
             .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(queryDate)},"$lte":${JSON.stringify(datePlusPCTMT)}}},`)
             .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(dateMinusPCTMT)},"$lte":${JSON.stringify(queryDate)}}}`)
@@ -1184,7 +1295,7 @@ describe('Star Tests ActivationDocument', () => {
             var args: string[] = [];
             args.push(`"potentialParent":true`);
             args.push(`"registeredResourceMrid":{"$in":${registeredResourceMridList_str}}`);
-            args.push(`"businessType":"${orderType}"`);
+            // args.push(`"businessType":"${orderType}"`);
             const date_criteria: string = `"$or":[`
             .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(queryDate)},"$lte":${JSON.stringify(datePlusPCTMT)}}},`)
             .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(dateMinusPCTMT)},"$lte":${JSON.stringify(queryDate)}}}`)

@@ -1,4 +1,4 @@
-import { parse } from 'tinyduration';
+import {parse} from 'tinyduration';
 
 export class DateHelper {
   public static makeDate(day: number, month: number, year: number): Date {
@@ -15,6 +15,15 @@ export class DateHelper {
     return DateHelper.makeDate(day, month, year);
   }
 
+  public static toDatetime(date: Date, time: string): Date {
+    const t = DateHelper.stringToTime(time);
+    let d = new Date(date.getTime());
+    d.setHours(t[0]);
+    d.setMinutes(t[1]);
+    d.setSeconds(t[2]);
+    return d;
+  }
+
   private static stringToTime(dateStr: string): number[] {
     const timeParts = dateStr.split(':');
     return [
@@ -24,13 +33,8 @@ export class DateHelper {
     ];
   }
 
-  public static toDatetime(date: Date, time: string): Date {
-    const t = DateHelper.stringToTime(time);
-    let d = new Date(date.getTime());
-    d.setHours(t[0]);
-    d.setMinutes(t[1]);
-    d.setSeconds(t[2]);
-    return d;
+  public static stringToTimestamp(dateStr: string): number {
+    return new Date(dateStr).getTime();
   }
 
   public static durationToMilliseconds(resolution: string): number {
@@ -44,4 +48,13 @@ export class DateHelper {
       (obj.years ? obj.years : 0) * 31536000;
     return seconds * 1000;
   }
+
+  public static addOneDayMinusOnemillisecond(jsonDate: string): string {
+    if (jsonDate == undefined || jsonDate == null || jsonDate == '') {
+      return jsonDate
+    }
+    let t = new Date((new Date(jsonDate)).getTime() + 24 * 3600000 - 1).toJSON();
+    return t.substring(0, t.indexOf('.')) + 'Z';
+  }
+
 }

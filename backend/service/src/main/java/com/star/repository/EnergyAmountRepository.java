@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.star.enums.InstanceEnum;
 import com.star.exception.BusinessException;
 import com.star.exception.TechnicalException;
-import com.star.models.common.PageHLF;
 import com.star.models.energyamount.EnergyAmount;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -14,9 +13,11 @@ import org.hyperledger.fabric.gateway.Contract;
 import org.hyperledger.fabric.gateway.ContractException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-import java.util.Collections;
+
 import java.util.List;
 import java.util.concurrent.TimeoutException;
+
+import static java.util.Collections.emptyList;
 
 /**
  * Copyright (c) 2022, Enedis (https://www.enedis.fr), RTE (http://www.rte-france.com)
@@ -47,7 +48,7 @@ public class EnergyAmountRepository {
      */
     public List<EnergyAmount> save(List<EnergyAmount> energyAmounts, InstanceEnum instance) throws TechnicalException {
         if (CollectionUtils.isEmpty(energyAmounts)) {
-            return Collections.emptyList();
+            return emptyList();
         }
         log.info("Sauvegarde des energy amounts : {}", energyAmounts);
         if (InstanceEnum.DSO.equals(instance)) {
@@ -68,7 +69,7 @@ public class EnergyAmountRepository {
      */
     public List<EnergyAmount> update(List<EnergyAmount> energyAmounts, InstanceEnum instance) throws TechnicalException {
         if (CollectionUtils.isEmpty(energyAmounts)) {
-            return Collections.emptyList();
+            return emptyList();
         }
         log.info("Modification des energy amounts : {}", energyAmounts);
         if (InstanceEnum.DSO.equals(instance)) {
@@ -94,10 +95,10 @@ public class EnergyAmountRepository {
         return energyAmounts;
     }
 
-    public PageHLF<EnergyAmount> findEnergyAmountByQuery(String query, String pageSize, String bookmark) throws BusinessException, TechnicalException {
+    public EnergyAmount[] findEnergyAmountByQuery(String query) throws BusinessException, TechnicalException {
         try {
-            byte[] response = contract.evaluateTransaction(GET_ENERGY_AMOUNT_WITH_PAGINATION, query, pageSize, bookmark);
-            return response != null ? objectMapper.readValue(new String(response), new TypeReference<PageHLF<EnergyAmount>>() {
+            byte[] response = contract.evaluateTransaction(GET_ENERGY_AMOUNT_WITH_PAGINATION, query);
+            return response != null ? objectMapper.readValue(new String(response), new TypeReference<EnergyAmount[]>() {
             }) : null;
         } catch (JsonProcessingException exception) {
             throw new TechnicalException("Erreur technique lors de la recherche des energy amounts", exception);

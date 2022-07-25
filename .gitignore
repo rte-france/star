@@ -33,6 +33,8 @@ target/
 
 # dependencies
 /node_modules
+package.json
+package-lock.json
 
 #old-poc
 /old-poc
@@ -80,3 +82,6 @@ secrets-*.yaml
 
 #scripts-test-chaincode
 /scripts-test-chaincode
+
+# terraform output files
+/terraform/lb_ingress_ip*

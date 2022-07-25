@@ -25,7 +25,7 @@ import static java.util.Collections.emptyList;
 @Slf4j
 @Repository
 public class OrdreLimitationRepository {
-    public static final String CREATE = "CreateActivationDocument";
+    public static final String CREATE_LIST = "CreateActivationDocumentList";
     public static final String GET_ORDER_BY_QUERY = "GetActivationDocumentByQuery";
     public static final String GET_BY_QUERY = "GetActivationDocumentByQuery";
     public static final String GET_ACTIVATION_DOCUMENT_RECONCILIATION_STATE = "GetActivationDocumentReconciliationState";
@@ -50,33 +50,20 @@ public class OrdreLimitationRepository {
             return emptyList();
         }
         log.info("Sauvegarde des ordres de limitation : {}", ordreLimitations);
-        for (OrdreLimitation ordreLimitation : ordreLimitations) {
-            if (ordreLimitation != null) {
-                try {
-                    contract.submitTransaction(CREATE, objectMapper.writeValueAsString(ordreLimitation));
-                    // Appeler la fonction GetActivationDocumentReconciliationState
-                    byte[] evaluateTransaction = contract.evaluateTransaction(GET_ACTIVATION_DOCUMENT_RECONCILIATION_STATE);
-                    // Appeler la fonction UpdateActivationDocumentByOrders
-                    if (evaluateTransaction != null) {
-                        contract.submitTransaction(UPDATE_ACTIVATION_DOCUMENT_BY_ORDERS, new String(evaluateTransaction));
-                    }
-                } catch (TimeoutException | InterruptedException | JsonProcessingException exception) {
-                    throw new TechnicalException("Erreur technique lors de création de l'ordre de limitation ", exception);
-                } catch (ContractException contractException) {
-                    throw new BusinessException(contractException.getMessage());
-                }
-            }
+        try {
+            contract.submitTransaction(CREATE_LIST, objectMapper.writeValueAsString(ordreLimitations));
+            this.reconciliate();
+        } catch (TimeoutException | InterruptedException | JsonProcessingException exception) {
+            throw new TechnicalException("Erreur technique lors de création de l'ordre de limitation ", exception);
+        } catch (ContractException contractException) {
+            throw new BusinessException(contractException.getMessage());
         }
         return ordreLimitations;
     }
 
     public List<OrdreLimitation> findOrderByQuery(String query) throws TechnicalException {
         try {
-            byte[] evaluateTransaction = contract.evaluateTransaction(GET_ACTIVATION_DOCUMENT_RECONCILIATION_STATE);
-            // Appeler la fonction UpdateActivationDocumentByOrders
-            if (evaluateTransaction != null) {
-                contract.submitTransaction(UPDATE_ACTIVATION_DOCUMENT_BY_ORDERS, new String(evaluateTransaction));
-            }
+            this.reconciliate();
             byte[] response = contract.evaluateTransaction(GET_ORDER_BY_QUERY, query);
             return response != null ? Arrays.asList(objectMapper.readValue(new String(response), OrdreLimitation[].class)) : emptyList();
         } catch (TimeoutException | InterruptedException | JsonProcessingException exception) {
@@ -88,12 +75,21 @@ public class OrdreLimitationRepository {
 
     public List<OrdreLimitation> findLimitationOrders(String query) throws TechnicalException {
         try {
+            this.reconciliate();
             byte[] response = contract.evaluateTransaction(GET_BY_QUERY, query);
             return response != null ? Arrays.asList(objectMapper.readValue(new String(response), OrdreLimitation[].class)) : emptyList();
-        } catch (JsonProcessingException exception) {
+        } catch (TimeoutException | InterruptedException | JsonProcessingException exception) {
             throw new TechnicalException("Erreur technique lors de la recherche des sites", exception);
         } catch (ContractException contractException) {
             throw new BusinessException(contractException.getMessage());
+        }
+    }
+
+
+    public void reconciliate() throws ContractException, TimeoutException, InterruptedException {
+        byte[] evaluateTransaction = contract.evaluateTransaction(GET_ACTIVATION_DOCUMENT_RECONCILIATION_STATE);
+        if (evaluateTransaction != null && evaluateTransaction.length > 2) {
+            contract.submitTransaction(UPDATE_ACTIVATION_DOCUMENT_BY_ORDERS, new String(evaluateTransaction));
         }
     }
 }

@@ -68,11 +68,11 @@ export class Values {
     }
 
     public static midnightDateStr(dateref: string): string {
-        console.info("dateref : ", dateref);
+        // console.info("dateref : ", dateref);
         var newDate = new Date(Date.parse(dateref));
 
         newDate.setHours(1,0,0,0);
-        console.info("newDate : ", newDate);
+        // console.info("newDate : ", newDate);
 
         return JSON.parse(JSON.stringify(newDate));
     }
@@ -201,9 +201,9 @@ export class Values {
 
 
     public static HTB_site_valid: Site = {
-        meteringPointMrid: 'PDL00000000289766',
+        meteringPointMrid: 'PDLHTB10000289766',
         systemOperatorMarketParticipantMrid: Values.HTB_systemoperator.systemOperatorMarketParticipantMrid,
-        producerMarketParticipantMrid: '17X0000013097450',
+        producerMarketParticipantMrid: Values.HTB_Producer.producerMarketParticipantMrid,
         technologyType: 'Eolien',
         siteType: 'Injection',
         siteName: 'Ferme éolienne de Genonville',
@@ -220,9 +220,9 @@ export class Values {
     };
 
     public static siteHTBProdA: Site = {
-        meteringPointMrid: 'PDL00000000289767',
+        meteringPointMrid: 'PDLHTB20000289767',
         systemOperatorMarketParticipantMrid: '17V0000009927469',
-        producerMarketParticipantMrid: '17X0000013097450',
+        producerMarketParticipantMrid: Values.HTB_Producer.producerMarketParticipantMrid,
         technologyType: 'Eolien',
         siteType: 'Injection',
         siteName: 'Ferme éolienne de Genonville',
@@ -239,7 +239,7 @@ export class Values {
     }
 
     public static siteHTBProdB: Site = {
-        meteringPointMrid: 'PDL00000000289768',
+        meteringPointMrid: 'PDLHTB30000289768',
         systemOperatorMarketParticipantMrid: '17V0000009927469',
         producerMarketParticipantMrid: '17X0000013097450',
         technologyType: 'Eolien',
@@ -259,9 +259,9 @@ export class Values {
 
 
     public static HTA_site_valid: Site = {
-        meteringPointMrid: 'PDL00000000289766',
+        meteringPointMrid: 'PDLHTA10000289766',
         systemOperatorMarketParticipantMrid: '17V0000009927464',
-        producerMarketParticipantMrid: '17X000001309745X',
+        producerMarketParticipantMrid: Values.HTA_Producer.producerMarketParticipantMrid,
         technologyType: 'Eolien',
         siteType: 'Injection',
         siteName: 'Ferme éolienne de Genonville',
@@ -278,9 +278,9 @@ export class Values {
     }
 
     public static HTA_site_valid_ProdA: Site = {
-        meteringPointMrid: 'PDL00000000289766',
+        meteringPointMrid: 'PDLHTA20000289766',
         systemOperatorMarketParticipantMrid: '17V0000009927464',
-        producerMarketParticipantMrid: '17X000001309745X',
+        producerMarketParticipantMrid: Values.HTA_Producer.producerMarketParticipantMrid,
         technologyType: 'Eolien',
         siteType: 'Injection',
         siteName: 'Ferme éolienne de AAAAAAAAAAAA',
@@ -297,7 +297,7 @@ export class Values {
     }
 
     public static HTA_site_valid_ProdB: Site = {
-        meteringPointMrid: 'PDL00000000289766',
+        meteringPointMrid: 'PDLHTA30000289766',
         systemOperatorMarketParticipantMrid: '17V0000009927464',
         producerMarketParticipantMrid: '17X000001309745X',
         technologyType: 'Eolien',
@@ -391,8 +391,8 @@ export class Values {
         originAutomationRegisteredResourceMrid: Values.HTA_yellowPage.originAutomationRegisteredResourceMrid, // FK1
         registeredResourceMrid: Values.HTA_site_valid.meteringPointMrid,
         measurementUnitName: 'KW',
-        messageType: 'string',
-        businessType: 'string',
+        messageType: 'D01',
+        businessType: 'Z01',
         orderEnd: false,
 
         orderValue: '1',
@@ -400,7 +400,7 @@ export class Values {
         // testDateTime: 'Date', // Test DELETE ME //////////////////////
         endCreatedDateTime: JSON.parse(JSON.stringify(Values.getEndDate())),
         revisionNumber: '1',
-        reasonCode: 'string', // optionnal in case of TVC modulation
+        reasonCode: 'A70', // optionnal in case of TVC modulation
         senderMarketParticipantMrid: Values.HTA_systemoperator.systemOperatorMarketParticipantMrid,
         receiverMarketParticipantMrid: Values.HTA_Producer.producerMarketParticipantMrid,
     }
@@ -410,8 +410,8 @@ export class Values {
         originAutomationRegisteredResourceMrid: Values.HTA_yellowPage.originAutomationRegisteredResourceMrid, // FK1
         registeredResourceMrid: Values.HTA_site_valid.meteringPointMrid,
         measurementUnitName: 'KW',
-        messageType: 'string',
-        businessType: 'string',
+        messageType: 'D01',
+        businessType: 'Z03',
         orderEnd: false,
 
         orderValue: '1',
@@ -419,7 +419,7 @@ export class Values {
         // testDateTime: 'Date', // Test DELETE ME //////////////////////
         endCreatedDateTime: JSON.parse(JSON.stringify(Values.getEndDate())),
         revisionNumber: '1',
-        reasonCode: 'string', // optionnal in case of TVC modulation
+        reasonCode: 'Y98', // optionnal in case of TVC modulation
         senderMarketParticipantMrid: Values.HTA_systemoperator2.systemOperatorMarketParticipantMrid,
         receiverMarketParticipantMrid: Values.HTA_Producer.producerMarketParticipantMrid,
     }
@@ -531,7 +531,7 @@ export class Values {
     public static HTA_EnergyAmount : EnergyAmount = {
         energyAmountMarketDocumentMrid: "ea4cef73-ff6b-400b-8957-d34000eb30a3",
         activationDocumentMrid: Values.HTA_ActivationDocument_Valid.activationDocumentMrid,
-        registeredResourceMrid: "PRM50012536123467",
+        registeredResourceMrid: Values.HTA_site_valid.meteringPointMrid,
         quantity: "number",
         measurementUnitName: "KW",
         revisionNumber: "1",

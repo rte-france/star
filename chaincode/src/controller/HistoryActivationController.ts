@@ -5,50 +5,63 @@ import { ParametersType } from "../enums/ParametersType";
 import { RoleType } from "../enums/RoleType";
 
 import { ActivationDocument } from "../model/activationDocument";
+import { EnergyAmount } from "../model/energyAmount";
 import { HistoryCriteria } from "../model/historyCriteria";
 import { HistoryInformation } from "../model/historyInformation";
+import { Producer } from "../model/producer";
 import { Site } from "../model/site";
 import { STARParameters } from "../model/starParameters";
+import { YellowPages } from "../model/yellowPages";
+
+import { ActivationDocumentController } from "./ActivationDocumentController";
+import { EnergyAmountController } from "./EnergyAmountController";
+import { ProducerController } from "./ProducerController";
 
 import { ActivationDocumentService } from "./service/ActivationDocumentService";
-import { EnergyAmountService } from "./service/EnergyAmountService";
 import { HLFServices } from "./service/HLFservice";
 import { ProducerService } from "./service/ProducerService";
 import { QueryStateService } from "./service/QueryStateService";
 import { SiteService } from "./service/SiteService";
+import { SystemOperatorService } from "./service/SystemOperatorService";
+import { YellowPagesController } from "./YellowPagesController";
 
 export class HistoryActivationController {
 
     public static async getHistoryByQuery(
         ctx: Context,
         params: STARParameters,
-        inputStr: string): Promise<any> {
+        inputStr: string): Promise<HistoryInformation[]> {
 
         let criteriaObj: HistoryCriteria;
-        try {
-            criteriaObj = JSON.parse(inputStr);
-        } catch (error) {
-        // console.error('error=', error);
-            throw new Error(`ERROR HistoriqueActivationDocumentCriteria-> Input string NON-JSON value`);
-        }
+        var result : HistoryInformation[];
 
-        HistoryCriteria.schema.validateSync(
-            criteriaObj,
-            {strict: true, abortEarly: false},
-        );
+        if (inputStr && inputStr !=="") {
+            try {
+                criteriaObj = JSON.parse(inputStr);
+            } catch (error) {
+            // console.error('error=', error);
+                throw new Error(`ERROR HistoriqueActivationDocumentCriteria-> Input string NON-JSON value`);
+            }
 
-        const role: string = params.values.get(ParametersType.ROLE);
-        criteriaObj = await HistoryActivationController.consolidateCriteria(ctx, params, criteriaObj, role);
+            HistoryCriteria.schema.validateSync(
+                criteriaObj,
+                {strict: true, abortEarly: false},
+            );
 
+            const role: string = params.values.get(ParametersType.ROLE);
+            criteriaObj = await HistoryActivationController.consolidateCriteria(ctx, params, criteriaObj, role);
 
-        var result : any;
-        if (criteriaObj) {
-            const query = await HistoryActivationController.buildActivationDocumentQuery(criteriaObj);
+            if (criteriaObj) {
+                const query = await HistoryActivationController.buildActivationDocumentQuery(criteriaObj);
 
-            const collections: string[] = await HLFServices.getCollectionsFromParameters(params, ParametersType.ACTIVATION_DOCUMENT, ParametersType.ALL);
+                const collections: string[] = await HLFServices.getCollectionsFromParameters(params, ParametersType.ACTIVATION_DOCUMENT, ParametersType.ALL);
 
-            const allActivationDocument: ActivationDocument[] = await ActivationDocumentService.getQueryArrayResult(ctx, params, query, collections);
-            result = await HistoryActivationController.consolidate(ctx, params, allActivationDocument);
+                const allActivationDocument: ActivationDocument[] = await ActivationDocumentService.getQueryArrayResult(ctx, params, query, collections);
+
+                if (allActivationDocument && allActivationDocument.length > 0) {
+                    result = await HistoryActivationController.consolidate(ctx, params, allActivationDocument);
+                }
+            }
         }
 
         return result;
@@ -60,6 +73,25 @@ export class HistoryActivationController {
         criteriaObj: HistoryCriteria,
         role: string): Promise<HistoryCriteria> {
 
+        criteriaObj.producerMarketParticipantName = criteriaObj.producerMarketParticipantName.trim();
+
+        const prodIdList: string[] = [];
+        if (criteriaObj.producerMarketParticipantMrid) {
+            prodIdList.push(criteriaObj.producerMarketParticipantMrid);
+        }
+        if (criteriaObj.producerMarketParticipantName) {
+            prodIdList.push(criteriaObj.producerMarketParticipantName);
+            const allProdId = await ProducerController.getProducerByName(ctx, criteriaObj.producerMarketParticipantName);
+            if (allProdId) {
+                for (var prodId of allProdId) {
+                    if (prodId && prodId.producerMarketParticipantMrid) {
+                        prodIdList.push(prodId.producerMarketParticipantMrid);
+                    }
+                }
+            }
+        }
+        criteriaObj.producerMarketParticipantList = prodIdList;
+
         var args: string[] = [];
 
         if (criteriaObj) {
@@ -69,15 +101,17 @@ export class HistoryActivationController {
             if (criteriaObj.originAutomationRegisteredResourceMrid) {
                 args.push(`"substationMrid":"${criteriaObj.originAutomationRegisteredResourceMrid}"`);
             }
-            if (criteriaObj.producerMarketParticipantMrid
-                && (role === RoleType.Role_DSO || role === RoleType.Role_TSO) ) {
-                args.push(`"producerMarketParticipantMrid":"${criteriaObj.producerMarketParticipantMrid}"`);
+            if (criteriaObj.producerMarketParticipantList && criteriaObj.producerMarketParticipantList.length > 0) {
+                const producerMarketParticipantList_str = JSON.stringify(criteriaObj.producerMarketParticipantList);
+                args.push(`"producerMarketParticipantMrid": { "$in" : ${producerMarketParticipantList_str} }`);
             }
             if (criteriaObj.siteName
                 && (role === RoleType.Role_Producer) ) {
                 args.push(`"siteName":"${criteriaObj.siteName}"`);
             }
         }
+
+
         criteriaObj.originAutomationRegisteredResourceList = [];
         criteriaObj.registeredResourceList = [];
         if (args.length > 0) {
@@ -89,9 +123,9 @@ export class HistoryActivationController {
             }
             for (var site of siteList) {
                 if (site.meteringPointMrid === criteriaObj.originAutomationRegisteredResourceMrid
-                    || site.producerMarketParticipantMrid === criteriaObj.producerMarketParticipantMrid
+                    || criteriaObj.producerMarketParticipantList.includes(site.producerMarketParticipantMrid)
                     || site.siteName == criteriaObj.siteName) {
-                        criteriaObj.originAutomationRegisteredResourceList.push(site.meteringPointMrid);
+                        criteriaObj.originAutomationRegisteredResourceList.push(site.substationMrid);
                         criteriaObj.registeredResourceList.push(site.meteringPointMrid);
                 }
             }
@@ -104,42 +138,45 @@ export class HistoryActivationController {
             criteriaObj.registeredResourceList.push(criteriaObj.registeredResourceMrid);
             criteriaObj.registeredResourceList.push(criteriaObj.originAutomationRegisteredResourceMrid);
         }
-    return criteriaObj;
+
+        return criteriaObj;
     }
 
     public static async buildActivationDocumentQuery(criteriaObj: HistoryCriteria) : Promise<string> {
         var args: string[] = [];
 
         if (criteriaObj) {
-            const criteriaPlace: string[] = [];
+            // const criteriaPlace: string[] = [];
             if (criteriaObj.originAutomationRegisteredResourceList
                 && criteriaObj.originAutomationRegisteredResourceList.length > 0) {
 
                 const originAutomationRegisteredResourceList_str = JSON.stringify(criteriaObj.originAutomationRegisteredResourceList);
-                criteriaPlace.push(`"originAutomationRegisteredResourceMrid": { "$in" : ${originAutomationRegisteredResourceList_str} }`);
+                // criteriaPlace.push(`"originAutomationRegisteredResourceMrid": { "$in" : ${originAutomationRegisteredResourceList_str} }`);
+                args.push(`"originAutomationRegisteredResourceMrid": { "$in" : ${originAutomationRegisteredResourceList_str} }`);
             }
             if (criteriaObj.registeredResourceList
                 && criteriaObj.registeredResourceList.length > 0) {
                 const registeredResourceList_str = JSON.stringify(criteriaObj.registeredResourceList);
-                criteriaPlace.push(`"registeredResourceMrid": { "$in" : ${registeredResourceList_str} }`);
+                // criteriaPlace.push(`"registeredResourceMrid": { "$in" : ${registeredResourceList_str} }`);
+                args.push(`"registeredResourceMrid": { "$in" : ${registeredResourceList_str} }`);
             }
-            if (criteriaPlace.length == 1) {
-                args.push(criteriaPlace[0]);
-            } else if (criteriaPlace.length > 1) {
-                var criteriaPlace_str: string = `"$or":[`;
-                for (var i=0; i<criteriaPlace.length; i++) {
-                    if (i>0) {
-                        criteriaPlace_str = criteriaPlace_str.concat(`,`);
-                    }
-                    criteriaPlace_str = criteriaPlace_str.concat(`{`).concat(criteriaPlace[i]).concat(`}`);
-                }
-                criteriaPlace_str = criteriaPlace_str.concat(`]`);
-                args.push(criteriaPlace_str);
-            }
-            if (criteriaObj.startCreatedDateTime) {
+            // if (criteriaPlace.length == 1) {
+            //     args.push(criteriaPlace[0]);
+            // } else if (criteriaPlace.length > 1) {
+            //     var criteriaPlace_str: string = `"$or":[`;
+            //     for (var i=0; i<criteriaPlace.length; i++) {
+            //         if (i>0) {
+            //             criteriaPlace_str = criteriaPlace_str.concat(`,`);
+            //         }
+            //         criteriaPlace_str = criteriaPlace_str.concat(`{`).concat(criteriaPlace[i]).concat(`}`);
+            //     }
+            //     criteriaPlace_str = criteriaPlace_str.concat(`]`);
+            //     args.push(criteriaPlace_str);
+            // }
+            if (criteriaObj.endCreatedDateTime) {
                 args.push(`"$or":[{"startCreatedDateTime":{"$lte": ${JSON.stringify(criteriaObj.endCreatedDateTime)}}},{"startCreatedDateTime":""},{"startCreatedDateTime":{"$exists": false}}]`);
             }
-            if (criteriaObj.endCreatedDateTime) {
+            if (criteriaObj.startCreatedDateTime) {
                 args.push(`"$or":[{"endCreatedDateTime":{"$gte": ${JSON.stringify(criteriaObj.startCreatedDateTime)}}},{"endCreatedDateTime":""},{"endCreatedDateTime":{"$exists": false}}]`);
             }
         }
@@ -153,43 +190,163 @@ export class HistoryActivationController {
         allActivationDocument: ActivationDocument[]): Promise<HistoryInformation[]> {
 
         const informationList: HistoryInformation[] = [];
+        const filledList: string[] = [];
 
         for (const activationDocument of allActivationDocument) {
-            const information: HistoryInformation = new HistoryInformation();
-            information.activationDocument = JSON.parse(JSON.stringify(activationDocument));
-            //Manage Yello Page to get Site Information
-            var siteRegistered: Site;
-            try {
-                siteRegistered = await SiteService.getObj(ctx, params, activationDocument.registeredResourceMrid);
-            } catch (error) {
-                //DO nothing
-            }
-            // var siteAutomation: Site;
-            // try {
-            //     siteAutomation = await SiteService.getObj(ctx, params, activationDocument.originAutomationRegisteredResourceMrid);
-            // } catch (error) {
-            //     //DO nothing
-            // }
-            // if (siteRegistered && siteRegistered.meteringPointMrid) {
-                information.site = JSON.parse(JSON.stringify(siteRegistered));
-            // } else if (siteAutomation && siteAutomation.meteringPointMrid) {
-            //     information.site = JSON.parse(JSON.stringify(siteAutomation));
-            // }
 
-            try {
-                information.producer = await ProducerService.getObj(ctx, information.site.producerMarketParticipantMrid);
-            } catch (error) {
-                //DO nothing
+            if (activationDocument && activationDocument.activationDocumentMrid) {
+
+                var subOrderList: ActivationDocument[] = [];
+                if (activationDocument && activationDocument.subOrderList) {
+                    for(const activationDocumentMrid of activationDocument.subOrderList) {
+                        var subOrder: ActivationDocument;
+                        try {
+                            subOrder = await ActivationDocumentController.getActivationDocumentById(ctx, params, activationDocumentMrid);
+                        } catch(error) {
+                            //do nothing, but empty document : suborder information is not in accessible collection
+                        }
+                        if (subOrder) {
+                            subOrderList.push(subOrder);
+                        }
+                    }
+                }
+                //Manage Yello Page to get Site Information
+                var siteRegistered: Site = null;
+                try {
+                    siteRegistered = await SiteService.getObj(ctx, params, activationDocument.registeredResourceMrid);
+                } catch (error) {
+                    //DO nothing except "Not accessible information"
+                }
+
+                var producer: Producer = null;
+                try {
+                    if (siteRegistered && siteRegistered.producerMarketParticipantMrid) {
+                        producer = await ProducerService.getObj(ctx, siteRegistered.producerMarketParticipantMrid);
+                    }
+                } catch (error) {
+                    //DO nothing except "Not accessible information"
+                }
+                if (!producer) {
+                    try {
+                        if (activationDocument.receiverMarketParticipantMrid) {
+                            const prod = await ProducerService.getObj(ctx, activationDocument.receiverMarketParticipantMrid);
+                            if (prod) {
+                                const untypedValue = JSON.parse(JSON.stringify(prod))
+                                if (untypedValue && untypedValue.producerMarketParticipantMrid) {
+                                    producer = {
+                                        producerMarketParticipantMrid: prod.producerMarketParticipantMrid,
+                                        producerMarketParticipantName: prod.producerMarketParticipantName,
+                                        producerMarketParticipantRoleType: prod.producerMarketParticipantRoleType
+                                    }
+                                // } else if (untypedValue && untypedValue.systemOperatorMarketParticipantMrid) {
+                                //     producer = {
+                                //         producerMarketParticipantMrid: untypedValue.systemOperatorMarketParticipantMrid,
+                                //         producerMarketParticipantName: untypedValue.systemOperatorMarketParticipantName,
+                                //         producerMarketParticipantRoleType: untypedValue.systemOperatorMarketParticipantRoleType
+                                //     }
+                                }
+                            }
+
+                        }
+                    } catch (error) {
+                        //DO nothing except "Not accessible information"
+                    }
+                }
+                // if (!producer) {
+                //     try {
+                //         if (activationDocument.receiverMarketParticipantMrid) {
+                //             var so = await SystemOperatorService.getObj(ctx, activationDocument.receiverMarketParticipantMrid);
+                //             if (so) {
+                //                 producer = {
+                //                     producerMarketParticipantMrid: so.systemOperatorMarketParticipantMrid,
+                //                     producerMarketParticipantName: so.systemOperatorMarketParticipantName,
+                //                     producerMarketParticipantRoleType: so.systemOperatorMarketParticipantRoleType
+                //                 }
+                //             }
+                //         }
+                //     } catch (error) {
+                //         //DO nothing except "Not accessible information"
+                //     }
+                // }
+
+
+                var energyAmount: EnergyAmount = null;
+                try {
+                    if (activationDocument && activationDocument.activationDocumentMrid) {
+                        energyAmount = await EnergyAmountController.getEnergyAmountByActivationDocument(ctx, params, activationDocument.activationDocumentMrid);
+                    }
+
+                } catch (error) {
+                    //DO nothing except "Not accessible information"
+                }
+
+                const information: HistoryInformation = {
+                    activationDocument: JSON.parse(JSON.stringify(activationDocument)),
+                    subOrderList: JSON.parse(JSON.stringify(subOrderList)),
+                    site: siteRegistered ? JSON.parse(JSON.stringify(siteRegistered)) : null,
+                    producer: producer ? JSON.parse(JSON.stringify(producer)) : null,
+                    energyAmount: energyAmount ? JSON.parse(JSON.stringify(energyAmount)) : null
+                };
+
+                if (information.site && information.producer) {
+                    filledList.push(activationDocument.activationDocumentMrid);
+                }
+
+                siteRegistered = null;
+                producer = null;
+                energyAmount = null;
+
+                informationList.push(information);
             }
-            try {
-                information.energyAmount = await EnergyAmountService.getObj(ctx, params, information.activationDocument.activationDocumentMrid);
-            } catch (error) {
-                //DO nothing
-            }
-            informationList.push(information);
+
         }
 
-        return informationList;
+        const finalinformation = HistoryActivationController.cleanFilled(ctx, informationList, filledList);
+        return finalinformation;
+    }
+
+    private static async cleanFilled(
+        ctx: Context,
+        initialInformation : HistoryInformation[],
+        filledList: string[]): Promise<HistoryInformation[]> {
+
+        const finalinformation: HistoryInformation[] = [];
+
+        for (var information of initialInformation) {
+            if (information.site && information.producer) {
+                finalinformation.push(information);
+            } else {
+                var subOrderExists = false;
+                for (var subOrderId of information.activationDocument.subOrderList) {
+                    subOrderExists = subOrderExists || filledList.includes(subOrderId);
+                }
+                if (!subOrderExists) {
+                    const finalInfo = await HistoryActivationController.fillDegradedInformation(ctx, information);
+                    finalinformation.push(finalInfo);
+                }
+            }
+        }
+
+        return finalinformation;
+    }
+
+    private static async fillDegradedInformation(
+        ctx: Context,
+        initialInformation : HistoryInformation): Promise<HistoryInformation> {
+        var filledInformation: HistoryInformation= JSON.parse(JSON.stringify(initialInformation));
+
+        if (filledInformation && filledInformation.activationDocument) {
+            if (filledInformation.activationDocument.registeredResourceMrid) {
+                const yellowPages: YellowPages[] = await YellowPagesController.getYellowPagesByRegisteredResourceMrid(ctx, filledInformation.activationDocument.registeredResourceMrid);
+                if (yellowPages && yellowPages.length >0) {
+                    filledInformation.activationDocument.originAutomationRegisteredResourceMrid = yellowPages[0].originAutomationRegisteredResourceMrid;
+                }
+            } else {
+                filledInformation.activationDocument.originAutomationRegisteredResourceMrid = '---';
+            }
+        }
+
+        return filledInformation;
     }
 
 }

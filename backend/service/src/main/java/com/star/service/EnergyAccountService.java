@@ -7,8 +7,6 @@ import com.star.enums.FileExtensionEnum;
 import com.star.exception.BusinessException;
 import com.star.exception.TechnicalException;
 import com.star.models.common.FichierImportation;
-import com.star.models.common.PageHLF;
-import com.star.models.common.PaginationDto;
 import com.star.models.energyaccount.EnergyAccount;
 import com.star.models.energyaccount.EnergyAccountCriteria;
 import com.star.models.energyaccount.ImportEnergyAccountResult;
@@ -142,7 +140,7 @@ public class EnergyAccountService {
         return importEnergyAccountResult;
     }
 
-    public PageHLF<EnergyAccount> findEnergyAccount(EnergyAccountCriteria energyAccountCriteria, String bookmark, PaginationDto paginationDto) throws BusinessException, TechnicalException {
+    public EnergyAccount[] findEnergyAccount(EnergyAccountCriteria energyAccountCriteria) throws BusinessException, TechnicalException {
         var selectors = new ArrayList<Selector>();
         selectors.add(Expression.eq("docType", ENERGY_ACCOUNT.getDocType()));
         if (isNotBlank(energyAccountCriteria.getMeteringPointMrid())) {
@@ -157,6 +155,6 @@ public class EnergyAccountService {
         var queryBuilder = QueryBuilderHelper.toQueryBuilder(selectors);
         String query = queryBuilder.build();
         log.debug("Transaction query: " + query);
-        return energyAccountRepository.findEnergyAccountByQuery(query, String.valueOf(paginationDto.getPageSize()), bookmark);
+        return energyAccountRepository.findEnergyAccountByQuery(query);
     }
 }

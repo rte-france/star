@@ -1,25 +1,16 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  OnChanges,
-  Output,
-  SimpleChanges,
-} from '@angular/core';
-import { Sort } from '@angular/material/sort';
-import { Motif } from 'src/app/models/Motifs';
-import { TypeSite } from 'src/app/models/enum/TypeSite.enum';
-import { InstanceService } from 'src/app/services/api/instance.service';
-import { Instance } from 'src/app/models/enum/Instance.enum';
-import { MatBottomSheet } from '@angular/material/bottom-sheet';
-import { ActivationGraphComponent } from '../activation-graph/activation-graph.component';
-import {
-  motifEnedisToString,
-  motifRteToString,
-} from 'src/app/rules/motif-rules';
-import { whichDateMustBeShown } from 'src/app/rules/show-date-rules';
-import { getLimitationType } from 'src/app/rules/limitation-type-rules';
-import { RechercheHistoriqueLimitationEntite } from 'src/app/models/RechercheHistoriqueLimitation';
+import {Component, Input, OnChanges, SimpleChanges,} from '@angular/core';
+import {Sort} from '@angular/material/sort';
+import {InstanceService} from 'src/app/services/api/instance.service';
+import {Instance} from 'src/app/models/enum/Instance.enum';
+import {MatBottomSheet} from '@angular/material/bottom-sheet';
+import {ActivationGraphComponent} from '../activation-graph/activation-graph.component';
+import {motifToString,} from 'src/app/rules/motif-rules';
+import {RechercheHistoriqueLimitationEntite} from 'src/app/models/RechercheHistoriqueLimitation';
+import {getLimitationType} from "../../../rules/limitation-type-rules";
+import {SystemOperator} from "../../../models/SystemOperator";
+import {TypeSite} from 'src/app/models/enum/TypeSite.enum';
+import {TechnologyType} from 'src/app/models/enum/TechnologyType.enum';
+import {DateHelper} from "../../../helpers/date.helper";
 
 @Component({
   selector: 'app-activations-resultats',
@@ -28,19 +19,19 @@ import { RechercheHistoriqueLimitationEntite } from 'src/app/models/RechercheHis
 })
 export class ActivationsResultatsComponent implements OnChanges {
   @Input() data: RechercheHistoriqueLimitationEntite[] = [];
+  @Input() systemOperators: SystemOperator[] = [];
   @Input() columnsToDisplay: string[] = [];
-  @Output() sortChange = new EventEmitter<Sort>();
-
-  TypeSite = TypeSite;
 
   dataComputed: any = [];
+  dataComputedSorted: any = [];
 
   instance?: Instance;
 
   constructor(
     private instanceService: InstanceService,
-    private bottomSheet: MatBottomSheet
-  ) {}
+    private bottomSheet: MatBottomSheet,
+  ) {
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     this.instanceService.getTypeInstance().subscribe((instance) => {
@@ -50,55 +41,117 @@ export class ActivationsResultatsComponent implements OnChanges {
   }
 
   private computeData() {
-    this.dataComputed = this.data.map((rhl) => {
-      const limitationType = getLimitationType(
-        rhl.rte?.motif,
-        rhl.enedis?.motif
-      );
-      const motif = this.getMotif(
-        rhl.rte?.motif,
-        rhl.enedis?.motif,
-        rhl.typeSite,
-        this.instance
-      );
-      const showDate = whichDateMustBeShown(rhl.typeSite, rhl.enedis?.motif);
+    // 1) Fill missing data
+    let dataForComputation: RechercheHistoriqueLimitationEntite[] = this.fillMissingData(this.data);
+
+    // 2) Compute data
+    this.dataComputed = dataForComputation.map((rhl) => {
+      const limitationType = getLimitationType(rhl);
+      const motif = motifToString(rhl.activationDocument);
       return {
         ...rhl,
-        showDate: showDate,
         motif: motif,
         limitationType: limitationType,
       };
     });
+
+    this.dataComputedSorted = [...this.dataComputed];
   }
 
-  private getMotif(
-    motifRte: Motif | undefined,
-    motifEnedis: Motif | undefined,
-    typeSite: TypeSite,
-    instance?: Instance
-  ): string {
-    if (
-      instance == Instance.TSO ||
-      (instance == Instance.PRODUCER && typeSite == TypeSite.HTB) // A producer can see only his own site.
-    ) {
-      return motifRteToString(motifRte);
-    } else {
-      return motifEnedisToString(motifEnedis);
+  private fillMissingData(data: RechercheHistoriqueLimitationEntite[]) {
+    let dataForComputation = [];
+    for (let d of data) {
+      if (d) {
+        if (!d.site) {
+          d.site = {
+            typeSite: TypeSite.HTB,
+            producerMarketParticipantMrid: '---',
+            producerMarketParticipantName: '---',
+            siteName: '---',
+            technologyType: TechnologyType.PHOTOVOLTAIQUE,
+            meteringPointMrid: '---',
+            siteAdminMRID: '---',
+            siteLocation: '---',
+            siteType: '---',
+            substationName: '---',
+            substationMrid: '---',
+            systemOperatorEntityFlexibilityDomainMrid: '---',
+            systemOperatorEntityFlexibilityDomainName: '---',
+            systemOperatorCustomerServiceName: '---'
+          }
+        }
+        if (!d.producer) {
+          d.producer = {
+            producerMarketParticipantMrid: '---',
+            producerMarketParticipantName: '---',
+            producerMarketParticipantRoleType: '---'
+          }
+          //d.activationDocument.originAutomationRegisteredResourceMrid = '---';
+        }
+      }
+      dataForComputation.push(d);
     }
+    return dataForComputation;
   }
 
   showGraph(activation: RechercheHistoriqueLimitationEntite) {
-    const operatorData =
-      activation.typeSite == TypeSite.HTA ? activation.enedis : activation.rte;
+    var meteringPointMrid: string = "";
+    if (activation.site) {
+      meteringPointMrid = activation.site.meteringPointMrid;
+    }
+
+    var dataValue = {
+      meteringPointMrid: meteringPointMrid,
+      startCreatedDateTime: activation.activationDocument.startCreatedDateTime,
+      endCreatedDateTime: activation.activationDocument.endCreatedDateTime,
+      orderValueConsign: activation.activationDocument.orderValue,
+      measurementUnitNameConsign: activation.activationDocument.measurementUnitName,
+    }
+
     this.bottomSheet.open(ActivationGraphComponent, {
       panelClass: 'graph-bottom-sheet',
-      data: {
-        meteringPointMrid: activation.meteringPointMrid,
-        startCreatedDateTime: operatorData?.startCreatedDateTime,
-        endCreatedDateTime: operatorData?.endCreatedDateTime,
-        orderValueConsign: operatorData?.orderValue,
-        measurementUnitNameConsign: operatorData?.measurementUnitName,
-      },
+      data: dataValue,
     });
+  }
+
+  public getSystemOperatorName(mrid: string): string {
+    for (const op of this.systemOperators) {
+      if (op.systemOperatorMarketParticipantMrid == mrid) {
+        return op.systemOperatorMarketParticipantName;
+      }
+    }
+    return "";
+  }
+
+  public sortChange(sort: Sort) {
+    // 1) No sort case
+    if (sort.direction == "") {
+      this.dataComputedSorted = [...this.dataComputed];
+      return;
+    }
+
+    // 2) Find the sorting method
+    let sortFunction: any = null;
+    switch (sort.active) {
+      case "debutLimitation":
+        sortFunction = (d1: any, d2: any): number => {
+          let ts1 = DateHelper.stringToTimestamp(d1.activationDocument.startCreatedDateTime);
+          let ts2 = DateHelper.stringToTimestamp(d2.activationDocument.startCreatedDateTime);
+          return sort.direction == "asc" ? ts1 - ts2 : ts2 - ts1;
+        };
+        break;
+      case "finLimitation":
+        sortFunction = (d1: any, d2: any): number => {
+          let ts1 = DateHelper.stringToTimestamp(d1.activationDocument.endCreatedDateTime);
+          let ts2 = DateHelper.stringToTimestamp(d2.activationDocument.endCreatedDateTime);
+          return sort.direction == "asc" ? ts1 - ts2 : ts2 - ts1;
+        };
+        break;
+    }
+
+    // 3) Sort data
+    if (sortFunction != null) {
+      this.dataComputedSorted = [...this.dataComputed].sort((d1: any, d2: any) => sortFunction(d1, d2));
+    }
   }
 }

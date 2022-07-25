@@ -9,6 +9,7 @@ import { Site } from '../model/site';
 import { SiteService } from './service/SiteService';
 import { SystemOperatorService } from './service/SystemOperatorService';
 import { ProducerService } from './service/ProducerService';
+import { Producer } from '../model/producer';
 
 export class SiteController {
     public static async createSite(
@@ -54,15 +55,17 @@ export class SiteController {
             throw new Error(error.message.concat(' for site creation'));
         }
 
+        let producerObj : Producer;
         try {
-            ProducerService.getRaw(ctx, siteObj.producerMarketParticipantMrid);
+            producerObj = await ProducerService.getObj(ctx, siteObj.producerMarketParticipantMrid);
         } catch(error) {
             throw new Error(error.message.concat(' for site creation'));
         }
 
+        siteObj.producerMarketParticipantName = producerObj.producerMarketParticipantName;
+
         await SiteService.write(ctx, params, siteObj);
-        console.info(
-            '============= END   : Create %s Site ===========',
+        console.info('============= END   : Create %s Site ===========',
             siteObj.meteringPointMrid,
         );
     }
@@ -116,8 +119,7 @@ export class SiteController {
         }
 
         await SiteService.write(ctx, params, siteObj);
-        console.info(
-            '============= END : Update %s Site ===========',
+        console.info('============= END : Update %s Site ===========',
             siteObj.meteringPointMrid,
         );
     }

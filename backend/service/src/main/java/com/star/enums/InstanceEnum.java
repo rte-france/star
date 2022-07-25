@@ -5,17 +5,23 @@ package com.star.enums;
  * SPDX-License-Identifier: Apache-2.0
  */
 public enum InstanceEnum {
-    TSO("tso"),
-    DSO("dso"),
-    PRODUCER("producer");
+    TSO("tso", "10XFR-RTE------Q"),
+    DSO("dso", "17X100A100A0001A"),
+    PRODUCER("producer", "");
 
     private String value;
+    private String systemOperatorMrid;
 
-    private InstanceEnum(String value) {
+    private InstanceEnum(String value, String systemOperatorMrid) {
         this.value = value;
+        this.systemOperatorMrid = systemOperatorMrid;
     }
 
     public String getValue() {
         return this.value;
+    }
+
+    public String getSystemOperatorMrid() {
+        return this.systemOperatorMrid;
     }
 }

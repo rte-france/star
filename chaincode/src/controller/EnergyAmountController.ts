@@ -44,7 +44,7 @@ export class EnergyAmountController {
             throw new Error(error.message.concat(` for Energy Amount ${energyObj.energyAmountMarketDocumentMrid} creation.`));
         }
 
-        if (checkSite) {
+        if (checkSite && energyObj.registeredResourceMrid && energyObj.registeredResourceMrid !== "") {
             try {
                 await SiteService.getObj(ctx, params, energyObj.registeredResourceMrid);
             } catch(error) {
@@ -167,12 +167,11 @@ export class EnergyAmountController {
             throw new Error(`Organisation, ${identity} does not have write access for Energy Amount.`);
         }
 
-        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENE,  true);
+        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENE);
 
         await EnergyAmountService.write(ctx, params, energyObj);
 
-        console.info(
-            '============= END   : createTSOEnergyAmount %s EnergyAmountController ===========',
+        console.info('============= END   : createTSOEnergyAmount %s EnergyAmountController ===========',
             energyObj.energyAmountMarketDocumentMrid,
         );
     }
@@ -190,7 +189,7 @@ export class EnergyAmountController {
             throw new Error(`Organisation, ${identity} does not have write access for Energy Amount.`);
         }
 
-        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENE, true);
+        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENE);
 
         //Check existence
         try {
@@ -201,8 +200,7 @@ export class EnergyAmountController {
 
         await EnergyAmountService.write(ctx, params, energyObj);
 
-        console.info(
-            '============= END   : updateTSOEnergyAmount %s EnergyAmountController ===========',
+        console.info('============= END   : updateTSOEnergyAmount %s EnergyAmountController ===========',
             energyObj.energyAmountMarketDocumentMrid,
         );
     }
@@ -222,12 +220,11 @@ export class EnergyAmountController {
             throw new Error(`Organisation, ${identity} does not have write access for Energy Amount.`);
         }
 
-        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENI);
+        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENI, true);
 
         await EnergyAmountService.write(ctx, params, energyObj);
 
-        console.info(
-            '============= END   : createDSOEnergyAmount %s EnergyAmountController ===========',
+        console.info('============= END   : createDSOEnergyAmount %s EnergyAmountController ===========',
             energyObj.energyAmountMarketDocumentMrid,
         );
     }
@@ -247,7 +244,7 @@ export class EnergyAmountController {
             throw new Error(`Organisation, ${identity} does not have write access for Energy Amount.`);
         }
 
-        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENI);
+        const energyObj: EnergyAmount = await EnergyAmountController.checkEnergyAmout(ctx, params, inputStr, EnergyType.ENI, true);
 
         //Check existence
         try {
@@ -258,8 +255,7 @@ export class EnergyAmountController {
 
         await EnergyAmountService.write(ctx, params, energyObj);
 
-        console.info(
-            '============= END   : updateDSOEnergyAmount %s EnergyAmountController ===========',
+        console.info('============= END   : updateDSOEnergyAmount %s EnergyAmountController ===========',
             energyObj.energyAmountMarketDocumentMrid,
         );
     }
@@ -383,4 +379,21 @@ export class EnergyAmountController {
 
         return results;
     }
+
+
+    public static async getEnergyAmountByActivationDocument(
+        ctx: Context,
+        params: STARParameters,
+        activationDocumentMrid: string): Promise<EnergyAmount> {
+
+        const query = `{"selector": {"docType": "${DocType.ENERGY_AMOUNT}", "activationDocumentMrid": "${activationDocumentMrid}"}}`;
+        const allResults = await EnergyAmountService.getQueryArrayResult(ctx, params, query);
+
+        var energyAmout:EnergyAmount;
+        if (allResults && allResults.length >0) {
+            energyAmout = allResults[0];
+        }
+        return energyAmout;
+    }
+
 }

@@ -17,6 +17,7 @@ import com.star.models.limitation.OrdreLimitationCriteria;
 import com.star.repository.OrdreLimitationRepository;
 import com.star.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
@@ -27,14 +28,16 @@ import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.star.enums.DocTypeEnum.ACTIVATION_DOCUMENT;
+import static com.star.utils.DateUtils.toLocalDateTime;
 import static java.util.UUID.randomUUID;
 import static java.util.stream.Collectors.toList;
-import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -68,36 +71,39 @@ public class OrdreLimitationService {
         List<OrdreLimitation> ordreDebutLimitations = new ArrayList<>();
         for (FichierImportation fichierOrdreLimitation : fichierOrdreLimitations) {
             String value = IOUtils.toString(fichierOrdreLimitation.getInputStream(), StandardCharsets.UTF_8);
-            OrdreLimitation ordreLimitation = !isBlank(value) ? objectMapper.readValue(value, OrdreLimitation.class) : null;
-            if (ordreLimitation == null) {
+            List<OrdreLimitation>  currentOrdreLimitations = !isBlank(value) ? objectMapper.readValue(value, objectMapper.getTypeFactory().constructCollectionType(List.class, OrdreLimitation.class)) : Collections.emptyList();
+            if (CollectionUtils.isEmpty(currentOrdreLimitations)) {
                 errors.add(messageSource.getMessage("import.file.empty.error", new String[]{fichierOrdreLimitation.getFileName()}, null));
                 break;
             }
-            try {
-                if (DateUtils.toLocalDateTime(ordreLimitation.getStartCreatedDateTime()) == null) {
-                    errors.add(messageSource.getMessage("import.ordreLimitation.debut.startCreatedDateTime.error",
+            currentOrdreLimitations.forEach(ordreLimitation -> {
+                List<String> currentErrors = new ArrayList<>();
+                try {
+                    if (toLocalDateTime(ordreLimitation.getStartCreatedDateTime()) == null) {
+                        currentErrors.add(messageSource.getMessage("import.ordreLimitation.debut.startCreatedDateTime.error",
+                                new String[]{fichierOrdreLimitation.getFileName()}, null));
+                    }
+                    if (toLocalDateTime(ordreLimitation.getEndCreatedDateTime()) != null) {
+                        currentErrors.add(messageSource.getMessage("import.ordreLimitation.debut.endCreatedDateTime.error",
+                                new String[]{fichierOrdreLimitation.getFileName()}, null));
+                    }
+                } catch (DateTimeParseException dateTimeParseException) {
+                    throw new BusinessException(messageSource.getMessage("import.date.format.error",
                             new String[]{fichierOrdreLimitation.getFileName()}, null));
                 }
-                if (DateUtils.toLocalDateTime(ordreLimitation.getEndCreatedDateTime()) != null) {
-                    errors.add(messageSource.getMessage("import.ordreLimitation.debut.endCreatedDateTime.error",
+                if (ordreLimitation.isOrderEnd()) {
+                    currentErrors.add(messageSource.getMessage("import.ordreLimitation.debut.orderEnd.error",
                             new String[]{fichierOrdreLimitation.getFileName()}, null));
                 }
-            } catch (DateTimeParseException dateTimeParseException) {
-                throw new BusinessException(messageSource.getMessage("import.date.format.error",
-                        new String[]{fichierOrdreLimitation.getFileName()}, null));
-            }
-
-            // le champ "orderEnd" doit être à false
-            if (ordreLimitation.isOrderEnd()) {
-                errors.add(messageSource.getMessage("import.ordreLimitation.debut.orderEnd.error",
-                        new String[]{fichierOrdreLimitation.getFileName()}, null));
-            }
-            errors.addAll(validator.validate(ordreLimitation).stream().map(violation ->
-                    messageSource.getMessage("import.error",
-                            new String[]{fichierOrdreLimitation.getFileName(), violation.getMessage()}, null)).collect(toList()));
-            if (isEmpty(errors)) {
-                ordreDebutLimitations.add(ordreLimitation);
-            }
+                currentErrors.addAll(validator.validate(ordreLimitation).stream().map(violation ->
+                        messageSource.getMessage("import.error",
+                                new String[]{fichierOrdreLimitation.getFileName(), violation.getMessage()}, null)).collect(toList()));
+                if (isNotEmpty(currentErrors)) {
+                    errors.addAll(currentErrors);
+                } else {
+                    ordreDebutLimitations.addAll(currentOrdreLimitations);
+                }
+            });
         }
         if (isNotEmpty(errors)) {
             importOrdreDebutLimitationResult.setErrors(errors);
@@ -134,27 +140,47 @@ public class OrdreLimitationService {
         List<OrdreLimitation> ordreLimitations = new ArrayList<>();
         for (FichierImportation fichierOrdreLimitation : fichierOrdreLimitations) {
             String value = IOUtils.toString(fichierOrdreLimitation.getInputStream(), StandardCharsets.UTF_8);
-            OrdreLimitation ordreLimitation = !isBlank(value) ? objectMapper.readValue(value, OrdreLimitation.class) : null;
-            if (ordreLimitation == null) {
+            List<OrdreLimitation>  currentOrdreLimitations = !isBlank(value) ? objectMapper.readValue(value, objectMapper.getTypeFactory().constructCollectionType(List.class, OrdreLimitation.class)) : Collections.emptyList();
+            if (CollectionUtils.isEmpty(currentOrdreLimitations)) {
                 errors.add(messageSource.getMessage("import.file.empty.error", new String[]{fichierOrdreLimitation.getFileName()}, null));
                 break;
             }
-            // le champ endCreatedDateTime est obligatoire lorsqu'il s'agit d'un ordre de début-fin ou un ordre de fin seul
-            if (isBlank(ordreLimitation.getEndCreatedDateTime())) {
-                errors.add(messageSource.getMessage("import.ordreLimitation.couple.endCreatedDateTime.error",
-                        new String[]{fichierOrdreLimitation.getFileName()}, null));
-            }
-            // le champ "orderEnd" doit être à false
-            if (ordreLimitation.isOrderEnd()) {
-                errors.add(messageSource.getMessage("import.ordreLimitation.couple.orderEnd.error",
-                        new String[]{fichierOrdreLimitation.getFileName()}, null));
-            }
-            errors.addAll(validator.validate(ordreLimitation).stream().map(violation ->
-                    messageSource.getMessage("import.error",
-                            new String[]{fichierOrdreLimitation.getFileName(), violation.getMessage()}, null)).collect(toList()));
-            if (isEmpty(errors)) {
-                ordreLimitations.add(ordreLimitation);
-            }
+            currentOrdreLimitations.forEach(ordreLimitation -> {
+                List<String> currentErrors = new ArrayList<>();
+                // le champ endCreatedDateTime est obligatoire lorsqu'il s'agit d'un ordre de début-fin ou un ordre de fin seul
+                if (isBlank(ordreLimitation.getEndCreatedDateTime())) {
+                    currentErrors.add(messageSource.getMessage("import.ordreLimitation.couple.endCreatedDateTime.error",
+                            new String[]{fichierOrdreLimitation.getFileName()}, null));
+                } else {
+                    if (isNotBlank(ordreLimitation.getStartCreatedDateTime())) {
+                        // STAR-498 : contrôle de cohérence des dates.
+                        try {
+                            LocalDateTime startDate = toLocalDateTime(ordreLimitation.getStartCreatedDateTime());
+                            LocalDateTime endDate = toLocalDateTime(ordreLimitation.getEndCreatedDateTime());
+                            if (!startDate.isBefore(endDate)) {
+                                currentErrors.add(messageSource.getMessage("import.ordreLimitation.startDate.endDate.error",
+                                        new String[]{fichierOrdreLimitation.getFileName()}, null));
+                            }
+                        } catch (DateTimeParseException dateTimeParseException) {
+                            throw new BusinessException(messageSource.getMessage("import.date.format.error",
+                                    new String[]{fichierOrdreLimitation.getFileName()}, null));
+                        }
+                    }
+                }
+                // le champ "orderEnd" doit être à false
+                if (ordreLimitation.isOrderEnd()) {
+                    currentErrors.add(messageSource.getMessage("import.ordreLimitation.couple.orderEnd.error",
+                            new String[]{fichierOrdreLimitation.getFileName()}, null));
+                }
+                currentErrors.addAll(validator.validate(ordreLimitation).stream().map(violation ->
+                        messageSource.getMessage("import.error",
+                                new String[]{fichierOrdreLimitation.getFileName(), violation.getMessage()}, null)).collect(toList()));
+                if (isNotEmpty(currentErrors)) {
+                    errors.addAll(currentErrors);
+                } else {
+                    ordreLimitations.addAll(currentOrdreLimitations);
+                }
+            });
         }
         if (isNotEmpty(errors)) {
             importCoupleOrdreLimitationResult.setErrors(errors);
@@ -180,6 +206,72 @@ public class OrdreLimitationService {
             importCoupleOrdreLimitationResult.setDatas(ordreLimitationRepository.saveOrdreLimitations(ordreLimitations));
         }
         return importCoupleOrdreLimitationResult;
+    }
+
+
+    public ImportOrdreLimitationResult importOrdreFinLimitation(List<FichierImportation> fichierOrdreLimitations, InstanceEnum instance) throws BusinessException, TechnicalException, IOException {
+        importUtilsService.checkImportFiles(fichierOrdreLimitations, FileExtensionEnum.JSON.getValue());
+        ImportOrdreLimitationResult importOrdreFinLimitationResult = new ImportOrdreLimitationResult();
+        List<String> errors = new ArrayList<>();
+        Validator validator = validatorFactory.getValidator();
+        List<OrdreLimitation> ordreFinLimitations = new ArrayList<>();
+        for (FichierImportation fichierOrdreLimitation : fichierOrdreLimitations) {
+            String value = IOUtils.toString(fichierOrdreLimitation.getInputStream(), StandardCharsets.UTF_8);
+            List<OrdreLimitation> currentOrdreLimitations = !isBlank(value) ? objectMapper.readValue(value, objectMapper.getTypeFactory().constructCollectionType(List.class, OrdreLimitation.class)) : Collections.emptyList();
+            if (CollectionUtils.isEmpty(currentOrdreLimitations)) {
+                errors.add(messageSource.getMessage("import.file.empty.error", new String[]{fichierOrdreLimitation.getFileName()}, null));
+                break;
+            }
+            currentOrdreLimitations.forEach(ordreLimitation -> {
+                List<String> currentErrors = new ArrayList<>();
+                try {
+                    if (DateUtils.toLocalDateTime(ordreLimitation.getStartCreatedDateTime()) != null) {
+                        currentErrors.add(messageSource.getMessage("import.ordreLimitation.fin.startCreatedDateTime.error",
+                                new String[]{fichierOrdreLimitation.getFileName()}, null));
+                    }
+                    if (DateUtils.toLocalDateTime(ordreLimitation.getEndCreatedDateTime()) == null) {
+                        currentErrors.add(messageSource.getMessage("import.ordreLimitation.fin.endCreatedDateTime.error",
+                                new String[]{fichierOrdreLimitation.getFileName()}, null));
+                    }
+                } catch (DateTimeParseException dateTimeParseException) {
+                    throw new BusinessException(messageSource.getMessage("import.date.format.error",
+                            new String[]{fichierOrdreLimitation.getFileName()}, null));
+                }
+                currentErrors.addAll(validator.validate(ordreLimitation).stream().map(violation ->
+                        messageSource.getMessage("import.error",
+                                new String[]{fichierOrdreLimitation.getFileName(), violation.getMessage()}, null)).collect(toList()));
+                if (isNotEmpty(currentErrors)) {
+                    errors.addAll(currentErrors);
+                } else {
+                    ordreFinLimitations.addAll(currentOrdreLimitations);
+                }
+            });
+        }
+        if (isNotEmpty(errors)) {
+            importOrdreFinLimitationResult.setErrors(errors);
+        } else {
+            ordreFinLimitations.forEach(ordreDebutLimitation -> {
+                ordreDebutLimitation.setActivationDocumentMrid(randomUUID().toString());
+                ordreDebutLimitation.setInstance(instance.getValue());
+                ordreDebutLimitation.setDocType(ACTIVATION_DOCUMENT.getDocType());
+                ordreDebutLimitation.setSubOrderList(new ArrayList<>());
+                ordreDebutLimitation.setEndCreatedDateTime(EMPTY);
+                if (ordreDebutLimitation.getOrderValue() == null) {
+                    ordreDebutLimitation.setOrderValue(EMPTY);
+                }
+                if (ordreDebutLimitation.getReceiverMarketParticipantMrid() == null) {
+                    ordreDebutLimitation.setReceiverMarketParticipantMrid(EMPTY);
+                }
+                if (ordreDebutLimitation.getRevisionNumber() == null) {
+                    ordreDebutLimitation.setRevisionNumber(REVISION_NUMBER);
+                }
+                if (ordreDebutLimitation.getSenderMarketParticipantMrid() == null) {
+                    ordreDebutLimitation.setSenderMarketParticipantMrid(EMPTY);
+                }
+            });
+            importOrdreFinLimitationResult.setDatas(ordreLimitationRepository.saveOrdreLimitations(ordreFinLimitations));
+        }
+        return importOrdreFinLimitationResult;
     }
 
     public List<OrdreLimitation> getOrdreDebutLimitation(InstanceEnum instance) throws TechnicalException {

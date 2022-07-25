@@ -212,7 +212,7 @@ export class Star extends Contract {
         }
     }
 
-    public async GetSiteWithPagination(
+    public async GetSitesByQuery(
         ctx: Context,
         query: string) {
         try {
@@ -276,6 +276,15 @@ export class Star extends Contract {
         try {
             const params: STARParameters = await ParametersController.getParameterValues(ctx);
             return (await ActivationDocumentController.createActivationDocument(ctx, params, inputStr));
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    public async CreateActivationDocumentList(ctx: Context, inputStr: string) {
+        try {
+            const params: STARParameters = await ParametersController.getParameterValues(ctx);
+            return (await ActivationDocumentController.createActivationDocumentList(ctx, params, inputStr));
         } catch (error) {
             throw error;
         }

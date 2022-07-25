@@ -99,18 +99,64 @@ export class ActivationDocumentController {
         try {
             activationDocumentObj = JSON.parse(inputStr);
         } catch (error) {
-        // console.error('error=', error);
-        throw new Error(`ERROR createActivationDocument-> Input string NON-JSON value`);
+            // console.error('error=', error);
+            throw new Error(`ERROR createActivationDocument-> Input string NON-JSON value`);
         }
 
-        ActivationDocument.schema.validateSync(
-            activationDocumentObj,
-            {strict: true, abortEarly: false},
-        );
+        try {
+            ActivationDocument.schema.validateSync(
+                activationDocumentObj,
+                {strict: true, abortEarly: false},
+            );
+        } catch (error) {
+            console.error('error=', error);
+            throw error;
+        }
 
         await ActivationDocumentController.createActivationDocumentObj(ctx, params, activationDocumentObj);
 
         console.info('============= END : Create ActivationDocumentController ===========');
+    }
+
+    public static async createActivationDocumentList(
+        ctx: Context,
+        params: STARParameters,
+        inputStr: string) {
+        console.info('============= START : Create List ActivationDocumentController ===========');
+
+        const identity = params.values.get(ParametersType.IDENTITY);
+        if (identity !== OrganizationTypeMsp.RTE && identity !== OrganizationTypeMsp.ENEDIS) {
+            throw new Error(`Organisation, ${identity} does not have write access for Activation Document`);
+        }
+
+        let activationDocumentList: ActivationDocument[] = [];
+        try {
+            activationDocumentList = JSON.parse(inputStr);
+        } catch (error) {
+            throw new Error(`ERROR createActivationDocument by list-> Input string NON-JSON value`);
+        }
+
+        if (activationDocumentList && activationDocumentList.length > 0) {
+            for (var activationDocumentObj of activationDocumentList) {
+                try {
+                    ActivationDocument.schema.validateSync(
+                        activationDocumentObj,
+                        {strict: true, abortEarly: false},
+                    );
+                } catch (error) {
+                    console.error('error=', error);
+                    throw error;
+                }
+            }
+        }
+
+        if (activationDocumentList) {
+            for (var activationDocumentObj of activationDocumentList) {
+                await ActivationDocumentController.createActivationDocumentObj(ctx, params, activationDocumentObj);
+            }
+        }
+
+        console.info('============= END : Create List ActivationDocumentController ===========');
     }
 
     private static async createActivationDocumentObj(
@@ -137,7 +183,7 @@ export class ActivationDocumentController {
             throw new Error('ERROR createActivationDocument : '.concat(error.message).concat(` for Activation Document ${activationDocumentObj.activationDocumentMrid} creation.`));
         }
 
-        if (systemOperatorObj.systemOperatorMarketParticipantName !== identity ) {
+        if (systemOperatorObj.systemOperatorMarketParticipantName.toLowerCase !== identity.toLowerCase ) {
             throw new Error(`Organisation, ${identity} cannot send Activation Document for sender ${systemOperatorObj.systemOperatorMarketParticipantName}`);
         }
 
@@ -156,7 +202,7 @@ export class ActivationDocumentController {
             producerSystemOperatorObj = JSON.parse(producerAsBytes.toString());
         }
 
-        /* Test Site existence if order comes from TSO and goes to DSO */
+        /* Test Site existence if order does not come from TSO and goes to DSO */
         if (!producerSystemOperatorObj
             || !producerSystemOperatorObj.systemOperatorMarketParticipantName
             || producerSystemOperatorObj.systemOperatorMarketParticipantName === "") {
@@ -171,7 +217,13 @@ export class ActivationDocumentController {
             throw new Error(`Order must have a limitation value`);
         }
 
-        /* Mix Collection is true if order doesn't directly to producer */
+        const activationDocumentRules: string[] = params.values.get(ParametersType.ACTIVATION_DOCUMENT_RULES);
+        const pattern = activationDocumentObj.messageType + "-" + activationDocumentObj.businessType + "-" + activationDocumentObj.reasonCode;
+        if (activationDocumentRules && !activationDocumentRules.includes(pattern)) {
+            throw new Error(`Incoherency between messageType, businessType and reason code for Activation Document ${activationDocumentObj.activationDocumentMrid} creation.`);
+        }
+
+        /* Mix Collection is true if order doesn't directly go to producer */
         const roleTable: Map<string, string> = params.values.get(ParametersType.ROLE_TABLE);
         var role_producer: string = '';
         var role_systemOperator: string = '';
@@ -201,13 +253,12 @@ export class ActivationDocumentController {
 
         activationDocumentObj.potentialParent =  (RoleType.Role_TSO === role_systemOperator && RoleType.Role_DSO == role_producer && activationDocumentObj.startCreatedDateTime !== "");
         const dsoChild : boolean = (RoleType.Role_DSO === role_systemOperator && activationDocumentObj.startCreatedDateTime !== "");
-        const tsoChild : boolean = (RoleType.Role_TSO === role_systemOperator && activationDocumentObj.orderEnd === true);
+        const tsoChild : boolean = (RoleType.Role_TSO === role_systemOperator && activationDocumentObj.orderEnd === true && !activationDocumentObj.startCreatedDateTime);
         activationDocumentObj.potentialChild = dsoChild || tsoChild;
 
         await ActivationDocumentService.write(ctx, params, activationDocumentObj, targetDocument);
 
-        console.info(
-            '============= END   : Create %s createActivationDocumentObj ===========',
+        console.info('============= END   : Create %s createActivationDocumentObj ===========',
             activationDocumentObj.activationDocumentMrid,
         );
     }
@@ -277,6 +328,7 @@ export class ActivationDocumentController {
     public static async getReconciliationState(
         ctx: Context,
         params: STARParameters): Promise<string> {
+        console.info('============= START : getReconciliationState ActivationDocumentController ===========');
 
         var conciliationState: ConciliationState = new ConciliationState();
         conciliationState.remaining = [];
@@ -301,6 +353,7 @@ export class ActivationDocumentController {
                     }
                 }
             }
+
             if (conciliationState && conciliationState.remaining && conciliationState.remaining.length >0 ) {
                 conciliationState = await ActivationDocumentController.garbageCleanage(params, conciliationState);
             }
@@ -309,6 +362,9 @@ export class ActivationDocumentController {
             }
         }
         var sate_str = JSON.stringify(conciliationState.updateOrders);
+
+        console.info('============= END : getReconciliationState ActivationDocumentController ===========');
+
         return sate_str;
     }
 
@@ -383,7 +439,7 @@ export class ActivationDocumentController {
                     } else if (!remainingDocument.data.startCreatedDateTime
                             && remainingDocument.data.endCreatedDateTime) {
 
-                                const senderMarketParticipant: SystemOperator = JSON.parse(await SystemOperatorController.querySystemOperator(ctx, remainingDocument.data.senderMarketParticipantMrid));
+                        const senderMarketParticipant: SystemOperator = JSON.parse(await SystemOperatorController.querySystemOperator(ctx, remainingDocument.data.senderMarketParticipantMrid));
                         if (senderMarketParticipant.systemOperatorMarketParticipantName === OrganizationTypeMsp.RTE) {
                             matchResult = await ActivationDocumentController.searchUpdateEndState(ctx, params, remainingDocument);
                         }
@@ -423,7 +479,7 @@ export class ActivationDocumentController {
         }
 
         const registeredResourceMridList_str = JSON.stringify(registeredResourceMridList);
-        const orderType = childReference.data.businessType;
+        // const orderType = childReference.data.businessType;
 
         const pctmt:number = params.values.get(ParametersType.PC_TIME_MATCH_THRESHOLD);
 
@@ -438,7 +494,7 @@ export class ActivationDocumentController {
         var args: string[] = [];
         args.push(`"potentialParent":true`);
         args.push(`"registeredResourceMrid":{"$in":${registeredResourceMridList_str}}`);
-        args.push(`"businessType":"${orderType}"`);
+        // args.push(`"businessType":"${orderType}"`);
         const date_criteria: string = `"$or":[`
         .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(queryDate)},"$lte":${JSON.stringify(datePlusPCTMT)}}},`)
         .concat(`{"startCreatedDateTime":{"$gte":${JSON.stringify(dateMinusPCTMT)},"$lte":${JSON.stringify(queryDate)}}}`)
@@ -574,7 +630,12 @@ export class ActivationDocumentController {
 
         for (var i = 0; i < comparedDocument.length; i++) {
             const dateParent = new Date(comparedDocument[i].startCreatedDateTime);
-            const dateChild = new Date(referenceDocument.endCreatedDateTime);
+            var dateChild: Date;
+            if (referenceDocument.startCreatedDateTime) {
+                dateChild = new Date(referenceDocument.startCreatedDateTime);
+            } else {
+                dateChild = new Date(referenceDocument.endCreatedDateTime);
+            }
             const delta_loc = Math.abs(dateParent.getTime() - dateChild.getTime());
             if (delta_loc < delta) {
                 delta = delta_loc;
